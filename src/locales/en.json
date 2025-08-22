@@ -1,0 +1,68 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "welcome": "Welcome"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "leagues": "Leagues",
+    "clubs": "Clubs",
+    "members": "Members",
+    "sports": "Sports",
+    "signOut": "Sign out"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signInTitle": "Sign in to Raquet Power",
+    "signUpTitle": "Create your account",
+    "createAccount": "create a new account",
+    "signInToExisting": "sign in to your existing account",
+    "email": "Email",
+    "emailAddress": "Email address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "signingIn": "Signing in...",
+    "creatingAccount": "Creating account...",
+    "enterEmail": "Enter your email address",
+    "enterPassword": "Enter your password",
+    "enterFullName": "Enter your full name",
+    "confirmYourPassword": "Confirm your password",
+    "passwordsDontMatch": "Passwords don't match",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "loginError": "An error occurred during login",
+    "registrationError": "An error occurred during registration",
+    "or": "Or"
+  },
+  "dashboard": {
+    "title": "Welcome to Raquet Power Dashboard",
+    "hello": "Hello",
+    "email": "Email",
+    "pleaseSignIn": "Please sign in to access the dashboard.",
+    "manageLeagues": "Manage sports leagues",
+    "manageClubs": "Manage sports clubs",
+    "manageMembers": "Manage club members",
+    "manageSports": "Manage sports types"
+  },
+  "home": {
+    "getStarted": "Get started by editing",
+    "saveAndSee": "Save and see your changes instantly.",
+    "deployNow": "Deploy now",
+    "readDocs": "Read our docs",
+    "learn": "Learn",
+    "examples": "Examples"
+  },
+  "metadata": {
+    "title": "Raquet Power - Sports Management System",
+    "description": "Comprehensive sports organization management platform"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "welcome": "Bienvenido"
+  },
+  "navigation": {
+    "dashboard": "Panel de Control",
+    "leagues": "Ligas",
+    "clubs": "Clubes",
+    "members": "Miembros",
+    "sports": "Deportes",
+    "signOut": "Cerrar Sesión"
+  },
+  "auth": {
+    "signIn": "Iniciar Sesión",
+    "signUp": "Registrarse",
+    "signInTitle": "Iniciar sesión en Raquet Power",
+    "signUpTitle": "Crear tu cuenta",
+    "createAccount": "crear una nueva cuenta",
+    "signInToExisting": "iniciar sesión en tu cuenta existente",
+    "email": "Correo electrónico",
+    "emailAddress": "Dirección de correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "fullName": "Nombre completo",
+    "signingIn": "Iniciando sesión...",
+    "creatingAccount": "Creando cuenta...",
+    "enterEmail": "Ingresa tu correo electrónico",
+    "enterPassword": "Ingresa tu contraseña",
+    "enterFullName": "Ingresa tu nombre completo",
+    "confirmYourPassword": "Confirma tu contraseña",
+    "passwordsDontMatch": "Las contraseñas no coinciden",
+    "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
+    "loginError": "Ocurrió un error durante el inicio de sesión",
+    "registrationError": "Ocurrió un error durante el registro",
+    "or": "O"
+  },
+  "dashboard": {
+    "title": "Bienvenido al Panel de Control de Raquet Power",
+    "hello": "¡Hola",
+    "email": "Correo",
+    "pleaseSignIn": "Por favor inicia sesión para acceder al panel de control.",
+    "manageLeagues": "Gestionar ligas deportivas",
+    "manageClubs": "Gestionar clubes deportivos",
+    "manageMembers": "Gestionar miembros del club",
+    "manageSports": "Gestionar tipos de deportes"
+  },
+  "home": {
+    "getStarted": "Comienza editando",
+    "saveAndSee": "Guarda y ve tus cambios al instante.",
+    "deployNow": "Desplegar ahora",
+    "readDocs": "Lee nuestra documentación",
+    "learn": "Aprender",
+    "examples": "Ejemplos"
+  },
+  "metadata": {
+    "title": "Raquet Power - Sistema de Gestión Deportiva",
+    "description": "Plataforma integral de gestión de organizaciones deportivas"
+  }
+}
