@@ -4,11 +4,10 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'web-production-40b3.up.railway.app', // <-- tu URL Railway
+        destination: 'https://web-production-40b3.up.railway.app/api/:path*', // 👈 con https:// y /api/:path*
       },
     ];
   },
 };
-module.exports = nextConfig;
 
-export default nextConfig;
+module.exports = nextConfig;
