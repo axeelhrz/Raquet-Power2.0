@@ -15,6 +15,7 @@ import AuthHeader from '@/components/auth/AuthHeader';
 import CustomBrandHelper from '@/components/ui/CustomBrandHelper';
 import axios from '@/lib/axios';
 import { isAxiosError } from 'axios';
+import { testApiConnection, testRegistroRapido } from '@/utils/testApiConnection';
 
 const registroRapidoSchema = z.object({
   // Información personal básica
@@ -329,15 +330,44 @@ const RegistroRapidoClient: React.FC = () => {
     }
   };
 
+  // Función de debugging para probar la API
+  const handleTestApi = async () => {
+    console.log('🧪 Testing API connection...');
+    const result = await testApiConnection();
+    console.log('API Test Result:', result);
+    
+    if (result && result.success) {
+      alert('✅ API connection successful! Check console for details.');
+    } else {
+      const message = result?.error?.message ?? 'Unknown error';
+      alert(`❌ API connection failed: ${message}`);
+    }
+  };
+  const handleTestRegistro = async () => {
+    console.log('🧪 Testing registro-rapido endpoint...');
+    const result = await testRegistroRapido();
+    console.log('Registro Test Result:', result);
+    
+    if (result && result.success) {
+      alert('✅ Registro endpoint working! Check console for details.');
+    } else {
+      const message = result?.error?.message ?? 'Unknown error';
+      alert(`❌ Registro endpoint failed: ${message}`);
+    }
+  };
+
   const onSubmit = async (data: RegistroRapidoFormValues) => {
     setIsSubmitting(true);
     try {
+      console.log('📝 Form data being submitted:', data);
+      
       const formData = new FormData();
       
       // Add all form data
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           formData.append(key, String(value));
+          console.log(`📋 Adding to FormData: ${key} = ${value}`);
         }
       });
 
@@ -357,8 +387,11 @@ const RegistroRapidoClient: React.FC = () => {
         }
 
         formData.append('photo', selectedPhoto);
+        console.log('📸 Photo added to FormData:', selectedPhoto.name, selectedPhoto.size);
       }
 
+      console.log('🚀 Sending request to /api/registro-rapido...');
+      
       // Send to API
       const response = await axios.post('/api/registro-rapido', formData, {
         headers: { 
@@ -366,6 +399,8 @@ const RegistroRapidoClient: React.FC = () => {
           'Accept': 'application/json'
         },
       });
+
+      console.log('✅ Response received:', response.data);
 
       // Extract registration data from response
       const responseData = response.data;
@@ -383,9 +418,17 @@ const RegistroRapidoClient: React.FC = () => {
       
       setIsSuccess(true);
     } catch (error: unknown) {
-      console.error('Error en registro rápido:', error);
+      console.error('❌ Error en registro rápido:', error);
 
       if (isAxiosError(error)) {
+        console.error('📊 Error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          url: error.config?.url,
+          method: error.config?.method
+        });
+
         const status = error.response?.status;
         if (status === 422) {
           const data = error.response?.data as unknown;
@@ -551,6 +594,27 @@ const RegistroRapidoClient: React.FC = () => {
                 subtitle="593 Liga Amateur de Tenis de Mesa (LATEM)"
               />
             </motion.div>
+
+            {/* Debug buttons - Solo en desarrollo */}
+            {process.env.NODE_ENV === 'development' && (
+              <motion.div variants={itemVariants} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                <h3 className="text-sm font-semibold text-yellow-800 mb-2">🧪 Debug Tools</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleTestApi}
+                    className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                  >
+                    Test API Connection
+                  </button>
+                  <button
+                    onClick={handleTestRegistro}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                  >
+                    Test Registro Endpoint
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl p-8 mt-8">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
