@@ -1,9 +1,8 @@
 import axios from 'axios';
 
-const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
-
+// Use empty baseURL to rely on Next.js rewrites
 const api = axios.create({
-  baseURL,
+  baseURL: "",
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -26,11 +25,14 @@ const getCsrfTokenFromCookie = (): string | null => {
   return null;
 };
 
-// Function to get CSRF token
+// Function to get CSRF token using relative URL
 const getCsrfToken = async (): Promise<void> => {
   try {
-    await axios.get(`${baseURL}/sanctum/csrf-cookie`, {
+    await axios.get('/sanctum/csrf-cookie', {
       withCredentials: true,
+      headers: {
+        'Accept': 'application/json',
+      },
     });
   } catch (error) {
     console.error('Failed to get CSRF token:', error);

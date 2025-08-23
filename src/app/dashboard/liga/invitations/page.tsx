@@ -71,70 +71,70 @@ export default function InvitationsPage() {
     }
   }, [user, fetchInvitations]);
 
-  const handleAcceptInvitation = async (invitation: Invitation) => {
-    try {
-      setProcessingInvitation(invitation.id);
-      const response = await axios.post(`/api/invitations/${invitation.id}/accept`);
-      
-      if (response.data.status === 'success') {
-        // Update the invitation in the list
+  const handleAcceptInvitation = async (invitation: Invitation) => { 
+    try { 
+      setProcessingInvitation(invitation.id); 
+      const response = await axios.post(`/api/invitations/${invitation.id}/accept`); 
+ 
+      if (response.data.status === 'success') { 
+        // Update the invitation in the list 
         setInvitations(prev => prev.map(inv => 
           inv.id === invitation.id 
-            ? { ...inv, status: 'accepted', responded_at: new Date().toISOString() }
-            : inv
-        ));
-        alert('Invitación aceptada exitosamente');
-      }
-    } catch (error) {
-      console.error('Error accepting invitation:', error);
-      alert('Error al aceptar la invitación');
-    } finally {
-      setProcessingInvitation(null);
-    }
-  };
-
-  const handleRejectInvitation = async (invitation: Invitation) => {
-    try {
-      setProcessingInvitation(invitation.id);
-      const response = await axios.post(`/api/invitations/${invitation.id}/reject`);
-      
-      if (response.data.status === 'success') {
-        // Update the invitation in the list
+            ? { ...inv, status: 'accepted' } 
+            : inv 
+        )); 
+        alert('Invitación aceptada exitosamente'); 
+      } 
+    } catch (error) { 
+      console.error('Error accepting invitation:', error); 
+      alert('Error al aceptar la invitación'); 
+    } finally { 
+      setProcessingInvitation(null); 
+    } 
+  }; 
+ 
+  const handleRejectInvitation = async (invitation: Invitation) => { 
+    try { 
+      setProcessingInvitation(invitation.id); 
+      const response = await axios.post(`/api/invitations/${invitation.id}/reject`); 
+ 
+      if (response.data.status === 'success') { 
+        // Update the invitation in the list 
         setInvitations(prev => prev.map(inv => 
           inv.id === invitation.id 
-            ? { ...inv, status: 'rejected', responded_at: new Date().toISOString() }
-            : inv
-        ));
-        alert('Invitación rechazada');
-      }
-    } catch (error) {
-      console.error('Error rejecting invitation:', error);
-      alert('Error al rechazar la invitación');
-    } finally {
-      setProcessingInvitation(null);
-    }
-  };
-
-  const handleCancelInvitation = async (invitation: Invitation) => {
-    try {
-      setProcessingInvitation(invitation.id);
-      const response = await axios.post(`/api/invitations/${invitation.id}/cancel`);
-      
-      if (response.data.status === 'success') {
-        // Update the invitation in the list
+            ? { ...inv, status: 'rejected' } 
+            : inv 
+        )); 
+        alert('Invitación rechazada'); 
+      } 
+    } catch (error) { 
+      console.error('Error rejecting invitation:', error); 
+      alert('Error al rechazar la invitación'); 
+    } finally { 
+      setProcessingInvitation(null); 
+    } 
+  }; 
+ 
+  const handleCancelInvitation = async (invitation: Invitation) => { 
+    try { 
+      setProcessingInvitation(invitation.id); 
+      const response = await axios.post(`/api/invitations/${invitation.id}/cancel`); 
+ 
+      if (response.data.status === 'success') { 
+        // Update the invitation in the list 
         setInvitations(prev => prev.map(inv => 
           inv.id === invitation.id 
-            ? { ...inv, status: 'cancelled', responded_at: new Date().toISOString() }
-            : inv
-        ));
-        alert('Invitación cancelada');
-      }
-    } catch (error) {
-      console.error('Error cancelling invitation:', error);
-      alert('Error al cancelar la invitación');
-    } finally {
-      setProcessingInvitation(null);
-    }
+            ? { ...inv, status: 'cancelled' } 
+            : inv 
+        )); 
+        alert('Invitación cancelada'); 
+      } 
+    } catch (error) { 
+      console.error('Error cancelling invitation:', error); 
+      alert('Error al cancelar la invitación'); 
+    } finally { 
+      setProcessingInvitation(null); 
+    } 
   };
 
   const openDetailModal = (invitation: Invitation) => {

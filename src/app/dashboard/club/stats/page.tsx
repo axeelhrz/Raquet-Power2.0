@@ -63,34 +63,43 @@ export default function ClubStatsPage() {
         const clubsResponse = await axios.get('/api/clubs');
         console.log('Stats - Clubs response:', clubsResponse.data);
         
-        const allClubs = clubsResponse.data.data;
-        const userClub = allClubs.data.find((club: Club) => club.user_id === user.id);
-        console.log('Stats - User club found:', userClub);
+        const clubsPayload = clubsResponse.data?.data ?? clubsResponse.data;
+        const clubsArray: Club[] = Array.isArray(clubsPayload?.data)
+          ? clubsPayload.data
+          : Array.isArray(clubsPayload)
+          ? clubsPayload
+          : [];
+        const userClub = clubsArray.find((club: Club) => club.user_id === user.id) || null;
+        setCurrentClub(userClub);
         
-        if (userClub) {
-          setCurrentClub(userClub);
-          
-          // Fetch members for this specific club
-            console.log('Stats - Fetching members for club:', userClub.id);
-            const membersResponse = await axios.get(`/api/members?club_id=${userClub.id}`);
-            console.log('Stats - Members response:', membersResponse.data);
-            
-            let clubMembers: Member[] = [];
-            if (membersResponse.data.data) {
-              clubMembers = Array.isArray(membersResponse.data.data.data) 
-                ? membersResponse.data.data.data 
-                : Array.isArray(membersResponse.data.data)
-                ? membersResponse.data.data
-                : [];
-            }
-            
-            console.log('Stats - Club members:', clubMembers);
-            setMembers(clubMembers);
-            
-            // Calculate detailed stats
-            const calculatedStats = calculateStats(clubMembers);
-            setStats(calculatedStats);
+        if (!userClub) {
+          console.warn('Stats - No club found for user');
+          setMembers([]);
+          setStats(calculateStats([]));
+          return;
         }
+
+        // Fetch members for this specific club
+        console.log('Stats - Fetching members for club:', userClub.id);
+        const membersResponse = await axios.get(`/api/members?club_id=${userClub.id}`);
+        console.log('Stats - Members response:', membersResponse.data);
+        
+        let clubMembers: Member[] = [];
+        const membersPayload = membersResponse.data?.data ?? membersResponse.data;
+        if (membersPayload) {
+          clubMembers = Array.isArray(membersPayload?.data) 
+            ? membersPayload.data 
+            : Array.isArray(membersPayload)
+            ? membersPayload
+            : [];
+        }
+        
+        console.log('Stats - Club members:', clubMembers);
+        setMembers(clubMembers);
+        
+        // Calculate detailed stats
+        const calculatedStats = calculateStats(clubMembers);
+        setStats(calculatedStats);
       } else if (user.role === 'super_admin') {
         // Super admin can see all data
         const membersResponse = await axios.get('/api/members');

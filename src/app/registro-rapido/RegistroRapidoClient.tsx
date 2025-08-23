@@ -361,7 +361,10 @@ const RegistroRapidoClient: React.FC = () => {
 
       // Send to API
       const response = await axios.post('/api/registro-rapido', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Accept': 'application/json'
+        },
       });
 
       // Extract registration data from response
