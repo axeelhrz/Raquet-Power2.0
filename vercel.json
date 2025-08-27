@@ -6,7 +6,7 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "https://tu-backend-railway.up.railway.app"
+    "NEXT_PUBLIC_BACKEND_URL": "https://web-production-40b3.up.railway.app"
   },
   "headers": [
     {

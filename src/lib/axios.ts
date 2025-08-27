@@ -4,11 +4,13 @@ import axios from 'axios';
 const getBackendUrl = (): string => {
   // In production (Vercel), use the environment variable
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_BACKEND_URL || 'web-production-40b3.up.railway.app';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://web-production-40b3.up.railway.app';
+    // Ensure the URL has the protocol
+    return backendUrl.startsWith('http') ? backendUrl : `https://${backendUrl}`;
   }
   
   // In development, use local backend or environment variable
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://raquet-power2-0.vercel.app/api';
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 };
 
 const api = axios.create({
@@ -38,7 +40,8 @@ const getCsrfTokenFromCookie = (): string | null => {
 // Function to get CSRF token using the backend URL
 const getCsrfToken = async (): Promise<void> => {
   try {
-    await axios.get(`${getBackendUrl()}/sanctum/csrf-cookie`, {
+    const backendUrl = getBackendUrl();
+    await axios.get(`${backendUrl}/sanctum/csrf-cookie`, {
       withCredentials: true,
       headers: {
         'Accept': 'application/json',
@@ -68,6 +71,8 @@ api.interceptors.request.use(
   async (config) => {
     // Log the request URL for debugging
     console.log('🌐 Making request to:', `${config.baseURL}${config.url}`);
+    console.log('🔧 Backend URL:', getBackendUrl());
+    console.log('🌍 Environment:', process.env.NODE_ENV);
     
     // For non-GET requests, ensure we have a CSRF token (except for exempt endpoints)
     if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
