@@ -419,10 +419,12 @@ export interface Tournament {
   max_participants?: number;
   entry_fee?: number;
   prize_pool?: number;
-  status: 'draft' | 'open' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'draft' | 'open' | 'in_progress';
   tournament_type: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+  tournament_format: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
   club_id?: number;
   league_id?: number;
+  sport_id: number;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -431,6 +433,13 @@ export interface Tournament {
   creator?: User;
   participants?: TournamentParticipant[];
   participants_count?: number;
+  
+  // Additional properties used in tournament management
+  location?: string;
+  rules?: string;
+  current_participants: number;
+  matches_played: number;
+  matches_total: number;
 }
 
 export interface TournamentParticipant {
@@ -456,9 +465,14 @@ export interface TournamentForm {
   max_participants?: number;
   entry_fee?: number;
   prize_pool?: number;
-  tournament_type: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+  tournament_type?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+  tournament_format: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
   club_id?: number;
   league_id?: number;
+  sport_id: number;
+  location?: string;
+  rules?: string;
+  status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'draft' | 'open' | 'in_progress';
 }
 
 // Invitation filter types

@@ -12,6 +12,8 @@ const sportSchema = z.object({
     .min(2, 'El código debe tener al menos 2 caracteres')
     .max(10, 'El código debe tener máximo 10 caracteres')
     .regex(/^[A-Z0-9_]+$/, 'El código solo puede contener letras mayúsculas, números y guiones bajos'),
+  description: z.string().optional(),
+  status: z.enum(['active', 'inactive']),
 });
 
 interface SportModalProps {
@@ -39,6 +41,8 @@ export default function SportModal({
     defaultValues: {
       name: sport?.name || '',
       code: sport?.code || '',
+      description: sport?.description || '',
+      status: sport?.status || 'active',
     },
   });
 
