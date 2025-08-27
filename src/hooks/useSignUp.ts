@@ -22,6 +22,23 @@ interface SignUpData {
   parent_league_id?: string;
   city?: string;
   address?: string;
+  ruc?: string;
+  google_maps_url?: string;
+  description?: string;
+  founded_date?: string;
+  can_create_tournaments?: boolean;
+  representative_name?: string;
+  representative_phone?: string;
+  representative_email?: string;
+  admin1_name?: string;
+  admin1_phone?: string;
+  admin1_email?: string;
+  admin2_name?: string;
+  admin2_phone?: string;
+  admin2_email?: string;
+  admin3_name?: string;
+  admin3_phone?: string;
+  admin3_email?: string;
   // Member fields
   full_name?: string;
   parent_club_id?: string;
@@ -88,9 +105,11 @@ type MemberRoleInfo = BaseRoleInfo & {
 };
 
 type RoleInfo = LeagueRoleInfo | ClubRoleInfo | MemberRoleInfo | BaseRoleInfo;
+
 interface SignUpResponse {
   data: {
     user: User;
+    token?: string;
     role_info: RoleInfo;
   };
   message: string;
@@ -100,6 +119,21 @@ interface ApiErrorResponse {
   message?: string;
   errors?: Record<string, string[]>;
 }
+
+// Helper functions for token management
+const setStoredToken = (token: string): void => {
+  if (typeof window === 'undefined') return;
+  
+  // Store in localStorage for client-side access
+  localStorage.setItem('auth_token', token);
+  
+  // Store in cookies for middleware access
+  document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  
+  // Set the token in axios headers
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  console.log('🔑 Token stored in localStorage, cookies, and axios headers');
+};
 
 export const useSignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -119,9 +153,21 @@ export const useSignUp = () => {
       console.log('✅ Registration successful:', response.data);
 
       if (response.data.data.user) {
+        // Store the token if provided (for automatic login after registration)
+        if (response.data.data.token) {
+          setStoredToken(response.data.data.token);
+          console.log('✅ Token received and stored - user automatically logged in');
+        } else {
+          console.warn('⚠️ No token received from registration response');
+        }
+
+        // Set user in context
         setUser(response.data.data.user);
         const role = response.data.data.user.role;
 
+        console.log(`🎯 Redirecting ${role} to appropriate dashboard...`);
+
+        // Redirect based on role - clubs go directly to dashboard
         switch (role) {
           case 'super_admin':
             router.push('/dashboard');
@@ -130,10 +176,12 @@ export const useSignUp = () => {
             router.push('/dashboard/liga');
             break;
           case 'club':
+            console.log('🏢 Club registered successfully - redirecting to club dashboard');
             router.push('/dashboard/club');
             break;
           case 'miembro':
             // Redirect members to waiting room after successful registration
+            console.log('👤 Member registered successfully - redirecting to waiting room');
             router.push('/waiting-room');
             break;
           default:

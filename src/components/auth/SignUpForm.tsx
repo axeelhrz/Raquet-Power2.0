@@ -127,18 +127,15 @@ const signUpSchema = z.object({
   league_name: z.string().optional(),
   province: z.string().optional(),
   
-  // Club fields - Enhanced
+  // Club fields - Enhanced (removed latitude, longitude, number_of_tables)
   club_name: z.string().optional(),
   parent_league_id: z.string().or(z.undefined()).transform((val) => (val && val.trim() !== '' ? val : undefined)),
   city: z.string().optional(),
   address: z.string().optional(),
   ruc: z.string().optional(),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
   google_maps_url: z.string().url('URL inválida').optional().or(z.literal('')),
   description: z.string().optional(),
   founded_date: z.string().optional(),
-  number_of_tables: z.number().min(0).max(50).optional(),
   can_create_tournaments: z.boolean().optional(),
   
   // Club representative
@@ -381,16 +378,13 @@ const SignUpForm: React.FC = () => {
       league_name: '',
       province: '',
       club_name: '',
-      parent_league_id: undefined,
+      parent_league_id: '',
       city: '',
       address: '',
       ruc: '',
-      latitude: undefined,
-      longitude: undefined,
       google_maps_url: '',
       description: '',
       founded_date: '',
-      number_of_tables: undefined,
       can_create_tournaments: false,
       representative_name: '',
       representative_phone: '',
@@ -405,7 +399,7 @@ const SignUpForm: React.FC = () => {
       admin3_phone: '',
       admin3_email: '',
       full_name: '',
-      parent_club_id: undefined,
+      parent_club_id: '',
       birth_date: '',
       gender: undefined,
       rubber_type: undefined,
@@ -939,69 +933,6 @@ const SignUpForm: React.FC = () => {
                           rows: 2
                         })}
 
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                          <Controller
-                            name="latitude"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                fullWidth
-                                label="Latitud (GPS)"
-                                type="number"
-                                placeholder="-2.1894"
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <GpsFixedIcon sx={{ color: selectedRoleData.color }} />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                                sx={{
-                                  '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                    '&.Mui-focused fieldset': {
-                                      borderColor: selectedRoleData.color,
-                                      borderWidth: 2,
-                                    },
-                                  },
-                                }}
-                              />
-                            )}
-                          />
-                          <Controller
-                            name="longitude"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                fullWidth
-                                label="Longitud (GPS)"
-                                type="number"
-                                placeholder="-79.8890"
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <GpsFixedIcon sx={{ color: selectedRoleData.color }} />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                                sx={{
-                                  '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                    '&.Mui-focused fieldset': {
-                                      borderColor: selectedRoleData.color,
-                                      borderWidth: 2,
-                                    },
-                                  },
-                                }}
-                              />
-                            )}
-                          />
-                        </Box>
-
                         {createTextField('google_maps_url', 'URL de Google Maps (opcional)', <MapIcon sx={{ color: selectedRoleData.color }} />, {
                           placeholder: 'https://maps.google.com/...'
                         })}
@@ -1010,37 +941,6 @@ const SignUpForm: React.FC = () => {
                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
                           Detalles del Club
                         </Typography>
-
-                        <Controller
-                          name="number_of_tables"
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              fullWidth
-                              label="Número de mesas"
-                              type="number"
-                              placeholder="4"
-                              InputProps={{
-                                startAdornment: (
-                                  <InputAdornment position="start">
-                                    <TableRestaurantIcon sx={{ color: selectedRoleData.color }} />
-                                  </InputAdornment>
-                                ),
-                              }}
-                              sx={{
-                                '& .MuiOutlinedInput-root': {
-                                  borderRadius: 2,
-                                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                  '&.Mui-focused fieldset': {
-                                    borderColor: selectedRoleData.color,
-                                    borderWidth: 2,
-                                  },
-                                },
-                              }}
-                            />
-                          )}
-                        />
 
                         <Controller
                           name="founded_date"

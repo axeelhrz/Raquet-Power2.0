@@ -32,9 +32,8 @@ const registroRapidoSchema = z.object({
   province: z.string().min(1, 'Por favor selecciona una provincia'),
   city: z.string().min(1, 'Por favor selecciona una ciudad'),
   
-  // Club y federación
+  // Club (sin federación)
   club_name: z.string().optional(),
-  federation: z.string().optional(),
   
   // Estilo de juego
   playing_side: z.enum(['derecho', 'zurdo']).optional(),
@@ -49,7 +48,7 @@ const registroRapidoSchema = z.object({
   // Caucho del drive
   drive_rubber_brand: z.string().optional(),
   drive_rubber_model: z.string().optional(),
-  drive_rubber_type: z.enum(['liso', 'pupo_largo', 'pupo_corto', 'antitopspin']).optional(),
+  drive_rubber_type: z.enum(['liso', 'pupo_largo', 'pupo_corto', 'antitopsping']).optional(),
   drive_rubber_color: z.enum(['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia']).optional(),
   drive_rubber_sponge: z.string().optional(),
   drive_rubber_hardness: z.string().optional(),
@@ -59,7 +58,7 @@ const registroRapidoSchema = z.object({
   // Caucho del back
   backhand_rubber_brand: z.string().optional(),
   backhand_rubber_model: z.string().optional(),
-  backhand_rubber_type: z.enum(['liso', 'pupo_largo', 'pupo_corto', 'antitopspin']).optional(),
+  backhand_rubber_type: z.enum(['liso', 'pupo_largo', 'pupo_corto', 'antitopsping']).optional(),
   backhand_rubber_color: z.enum(['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia']).optional(),
   backhand_rubber_sponge: z.string().optional(),
   backhand_rubber_hardness: z.string().optional(),
@@ -93,45 +92,59 @@ const ECUADOR_PROVINCES = [
   { name: 'Esmeraldas', cities: ['Esmeraldas', 'Atacames', 'Muisne', 'Quinindé', 'San Lorenzo'] },
 ];
 
+// Updated club list as requested
 const TT_CLUBS_ECUADOR = [
-  { name: 'PPH Cuenca', federation: 'Fede Guayas' },
-  { name: 'Ping Pro', federation: 'Fede Guayas' },
-  { name: 'Billy Team', federation: 'Fede Guayas' },
-  { name: 'Independiente', federation: 'Fede Guayas' },
-  { name: 'BackSpin', federation: 'Fede Guayas' },
-  { name: 'Spin Factor', federation: 'Fede - Manabí' },
-  { name: 'Spin Zone', federation: 'Fede Tungurahua' },
-  { name: 'TM - Manta', federation: 'Fede - Manabí' },
-  { name: 'Primorac', federation: 'Fede Pichincha' },
-  { name: 'TT Quevedo', federation: 'Fede Los Ríos' },
-  { name: 'Fede Santa Elena', federation: 'Fede Santa Elena' },
-  { name: 'Ranking Uartes', federation: 'Fede Galápagos' },
-  { name: 'Guayaquil City', federation: 'Fede Guayas' },
-  { name: 'Buena Fe', federation: 'Fede Guayas' },
-  { name: 'Milagro', federation: 'Fede Guayas' },
-  { name: 'Ping Pong Rick', federation: 'Fede Guayas' },
-  { name: 'Ranking Liga 593', federation: 'LATEM' },
+  'PPH',
+  'Cuenca',
+  'Fede Guayas',
+  'Ping Pro',
+  'Billy Team',
+  'Independiente',
+  'BackSping',
+  'Spin Factor',
+  'Fede - Manabi',
+  'Spin Zone',
+  'Ambato',
+  'TM - Manta',
+  'Primorac',
+  'Quito',
+  'TT Quevedo',
+  'Fede Santa Elena',
+  'Uartes',
+  'Galapagos',
+  'Guayaquil City',
+  'Buena Fe',
+  'Milagro',
+  'Ping Pong Rick'
 ];
 
+// Updated brands list with Hurricane and Yinhe
 const POPULAR_BRANDS = [
   'Butterfly', 'DHS', 'Sanwei', 'Nittaku', 'Yasaka', 'Stiga', 
-  'Victas', 'Joola', 'Xiom', 'Saviga', 'Friendship', 'Dr. Neubauer', 'Double Fish'
+  'Victas', 'Joola', 'Xiom', 'Saviga', 'Friendship', 'Dr. Neubauer', 
+  'Double Fish', 'Hurricane', 'Yinhe'
 ];
 
 const RUBBER_COLORS = ['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia'];
+
+// Updated rubber types with corrected name
 const RUBBER_TYPES = [
   { value: 'liso', label: 'Liso' },
   { value: 'pupo_largo', label: 'Pupo Largo' },
   { value: 'pupo_corto', label: 'Pupo Corto' },
-  { value: 'antitopspin', label: 'Antitopspin' }
+  { value: 'antitopsping', label: 'Antitopsping' }
 ];
+
 const HARDNESS_LEVELS = ['h42', 'h44', 'h46', 'h48', 'h50'];
-const SPONGE_THICKNESSES = ['sin esponja', '1.0', '1.5', '1.8', '2.0', 'max'];
+
+// Updated sponge thickness options as requested
+const SPONGE_THICKNESSES = ['0,5', '0,7', '1,5', '1,6', '1,8', '1,9', '2', '2,1', '2,2', 'sin esponja'];
 
 // Tipos fuertes para los campos de marcas/modelos
 type BrandFieldName = 'racket_brand' | 'drive_rubber_brand' | 'backhand_rubber_brand';
 type CustomBrandFieldName = 'racket_custom_brand' | 'drive_rubber_custom_brand' | 'backhand_rubber_custom_brand';
 type CustomModelFieldName = 'racket_custom_model' | 'drive_rubber_custom_model' | 'backhand_rubber_custom_model';
+
 // Componente para campos personalizados mejorado
 const CustomBrandFields: React.FC<{
   show: boolean;
@@ -306,16 +319,7 @@ const RegistroRapidoClient: React.FC = () => {
   });
 
   const watchedProvince = watch('province');
-  const watchedClubName = watch('club_name');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
-  const selectedClub = TT_CLUBS_ECUADOR.find(c => c.name === watchedClubName);
-
-  // Auto-set federation when club is selected
-  React.useEffect(() => {
-    if (selectedClub) {
-      setValue('federation', selectedClub.federation);
-    }
-  }, [selectedClub, setValue]);
 
   // Handle photo selection
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -838,40 +842,26 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Club y Federación */}
+                {/* Club (sin federación) */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
-                    Club y Federación
+                    Club
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label htmlFor="club_name" className={labelStyles}>Club</label>
-                      <select
-                        {...register('club_name')}
-                        id="club_name"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      >
-                        <option value="">Seleccionar club</option>
-                        {TT_CLUBS_ECUADOR.map((club) => (
-                          <option key={club.name} value={club.name}>
-                            {club.name}
-                          </option>
-                        ))}
-                        <option value="otro">Otro (no listado)</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="federation" className={labelStyles}>Federación</label>
-                      <input
-                        {...register('federation')}
-                        type="text"
-                        id="federation"
-                        placeholder="Fede Guayas"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label htmlFor="club_name" className={labelStyles}>Club</label>
+                    <select
+                      {...register('club_name')}
+                      id="club_name"
+                      className={`${inputStyles} ${inputNormalStyles}`}
+                    >
+                      <option value="">Seleccionar club</option>
+                      {TT_CLUBS_ECUADOR.map((club) => (
+                        <option key={club} value={club}>
+                          {club}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -1037,7 +1027,7 @@ const RegistroRapidoClient: React.FC = () => {
                         <option value="">Seleccionar esponja</option>
                         {SPONGE_THICKNESSES.map((thickness) => (
                           <option key={thickness} value={thickness}>
-                            {thickness} {thickness !== 'sin esponja' && 'mm'}
+                            {thickness === 'sin esponja' ? thickness : `${thickness} mm`}
                           </option>
                         ))}
                       </select>
@@ -1142,7 +1132,7 @@ const RegistroRapidoClient: React.FC = () => {
                         <option value="">Seleccionar esponja</option>
                         {SPONGE_THICKNESSES.map((thickness) => (
                           <option key={thickness} value={thickness}>
-                            {thickness} {thickness !== 'sin esponja' && 'mm'}
+                            {thickness === 'sin esponja' ? thickness : `${thickness} mm`}
                           </option>
                         ))}
                       </select>

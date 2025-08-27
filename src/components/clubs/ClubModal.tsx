@@ -14,14 +14,11 @@ const clubSchema = z.object({
   province: z.string().optional(),
   city: z.string().optional(),
   address: z.string().optional(),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
   google_maps_url: z.string().url('URL inválida').optional().or(z.literal('')),
   description: z.string().optional(),
   founded_date: z.string().optional(),
   
   // Club statistics
-  number_of_tables: z.number().min(0).max(50).optional(),
   can_create_tournaments: z.boolean().optional(),
   
   // Representative information
@@ -85,8 +82,29 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
   } = useForm<ClubFormValues>({
     resolver: zodResolver(clubSchema),
     defaultValues: {
+      league_id: '',
+      name: '',
+      ruc: '',
       country: 'Ecuador',
+      province: '',
+      city: '',
+      address: '',
+      google_maps_url: '',
+      description: '',
+      founded_date: '',
       can_create_tournaments: false,
+      representative_name: '',
+      representative_phone: '',
+      representative_email: '',
+      admin1_name: '',
+      admin1_phone: '',
+      admin1_email: '',
+      admin2_name: '',
+      admin2_phone: '',
+      admin2_email: '',
+      admin3_name: '',
+      admin3_phone: '',
+      admin3_email: '',
     },
   });
 
@@ -103,12 +121,9 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
         province: club.province || '',
         city: club.city || '',
         address: club.address || '',
-        latitude: club.latitude || undefined,
-        longitude: club.longitude || undefined,
         google_maps_url: club.google_maps_url || '',
         description: club.description || '',
         founded_date: club.founded_date || '',
-        number_of_tables: club.number_of_tables || undefined,
         can_create_tournaments: club.can_create_tournaments || false,
         representative_name: club.representative_name || '',
         representative_phone: club.representative_phone || '',
@@ -152,6 +167,7 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
   const onSubmit = async (data: ClubFormValues) => {
     // Convert the form data to ClubForm format and call the parent's onSave
     const clubFormData: ClubForm = {
+      // Basic information
       name: data.name,
       city: data.city || '',
       address: data.address,
@@ -159,6 +175,27 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
       email: data.representative_email,
       status: 'active', // Default status
       league_id: data.league_id ? parseInt(data.league_id) : undefined,
+      
+      // Additional fields that the backend expects
+      ruc: data.ruc,
+      country: data.country,
+      province: data.province,
+      google_maps_url: data.google_maps_url,
+      description: data.description,
+      founded_date: data.founded_date,
+      can_create_tournaments: data.can_create_tournaments,
+      representative_name: data.representative_name,
+      representative_phone: data.representative_phone,
+      representative_email: data.representative_email,
+      admin1_name: data.admin1_name,
+      admin1_phone: data.admin1_phone,
+      admin1_email: data.admin1_email,
+      admin2_name: data.admin2_name,
+      admin2_phone: data.admin2_phone,
+      admin2_email: data.admin2_email,
+      admin3_name: data.admin3_name,
+      admin3_phone: data.admin3_phone,
+      admin3_email: data.admin3_email,
     };
 
     await onSave(clubFormData);
@@ -346,7 +383,7 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-6"
               >
-                <h3 className={sectionTitleStyles}>Ubicación</h3>
+                <h3 className={sectionTitleStyles}>Ubicación del Club</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -405,32 +442,6 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label htmlFor="latitude" className={labelStyles}>Latitud</label>
-                    <input
-                      {...register('latitude', { valueAsNumber: true })}
-                      type="number"
-                      step="any"
-                      id="latitude"
-                      placeholder="-2.1894"
-                      className={`${inputStyles} ${inputNormalStyles}`}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="longitude" className={labelStyles}>Longitud</label>
-                    <input
-                      {...register('longitude', { valueAsNumber: true })}
-                      type="number"
-                      step="any"
-                      id="longitude"
-                      placeholder="-79.8890"
-                      className={`${inputStyles} ${inputNormalStyles}`}
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <label htmlFor="google_maps_url" className={labelStyles}>URL de Google Maps</label>
                   <input
@@ -456,33 +467,18 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
               >
                 <h3 className={sectionTitleStyles}>Detalles del Club</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label htmlFor="number_of_tables" className={labelStyles}>Número de Mesas</label>
+                <div className="space-y-2">
+                  <label className={labelStyles}>Permisos</label>
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
                     <input
-                      {...register('number_of_tables', { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      max="50"
-                      id="number_of_tables"
-                      placeholder="4"
-                      className={`${inputStyles} ${inputNormalStyles}`}
+                      {...register('can_create_tournaments')}
+                      type="checkbox"
+                      id="can_create_tournaments"
+                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className={labelStyles}>Permisos</label>
-                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                      <input
-                        {...register('can_create_tournaments')}
-                        type="checkbox"
-                        id="can_create_tournaments"
-                        className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <label htmlFor="can_create_tournaments" className="text-sm font-medium text-gray-900">
-                        Puede crear torneos por ranking
-                      </label>
-                    </div>
+                    <label htmlFor="can_create_tournaments" className="text-sm font-medium text-gray-900">
+                      Puede crear torneos por ranking
+                    </label>
                   </div>
                 </div>
 
@@ -526,152 +522,6 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
                       />
                       {errors.representative_email && (
                         <p className="text-sm text-red-700 font-medium">{errors.representative_email.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 4: Administrators */}
-            {currentStep === 4 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="space-y-6"
-              >
-                <h3 className={sectionTitleStyles}>Administradores</h3>
-                
-                {/* Administrator 1 */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">
-                    Administrador 1
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="admin1_name" className={labelStyles}>Nombre</label>
-                      <input
-                        {...register('admin1_name')}
-                        type="text"
-                        id="admin1_name"
-                        placeholder="María González"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin1_phone" className={labelStyles}>Teléfono</label>
-                      <input
-                        {...register('admin1_phone')}
-                        type="tel"
-                        id="admin1_phone"
-                        placeholder="0999123456"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin1_email" className={labelStyles}>Email</label>
-                      <input
-                        {...register('admin1_email')}
-                        type="email"
-                        id="admin1_email"
-                        placeholder="admin1@club.com"
-                        className={`${inputStyles} ${errors.admin1_email ? inputErrorStyles : inputNormalStyles}`}
-                      />
-                      {errors.admin1_email && (
-                        <p className="text-sm text-red-700 font-medium">{errors.admin1_email.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Administrator 2 */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">
-                    Administrador 2
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="admin2_name" className={labelStyles}>Nombre</label>
-                      <input
-                        {...register('admin2_name')}
-                        type="text"
-                        id="admin2_name"
-                        placeholder="Carlos Rodríguez"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin2_phone" className={labelStyles}>Teléfono</label>
-                      <input
-                        {...register('admin2_phone')}
-                        type="tel"
-                        id="admin2_phone"
-                        placeholder="0999123456"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin2_email" className={labelStyles}>Email</label>
-                      <input
-                        {...register('admin2_email')}
-                        type="email"
-                        id="admin2_email"
-                        placeholder="admin2@club.com"
-                        className={`${inputStyles} ${errors.admin2_email ? inputErrorStyles : inputNormalStyles}`}
-                      />
-                      {errors.admin2_email && (
-                        <p className="text-sm text-red-700 font-medium">{errors.admin2_email.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Administrator 3 */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">
-                    Administrador 3
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="admin3_name" className={labelStyles}>Nombre</label>
-                      <input
-                        {...register('admin3_name')}
-                        type="text"
-                        id="admin3_name"
-                        placeholder="Ana López"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin3_phone" className={labelStyles}>Teléfono</label>
-                      <input
-                        {...register('admin3_phone')}
-                        type="tel"
-                        id="admin3_phone"
-                        placeholder="0999123456"
-                        className={`${inputStyles} ${inputNormalStyles}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="admin3_email" className={labelStyles}>Email</label>
-                      <input
-                        {...register('admin3_email')}
-                        type="email"
-                        id="admin3_email"
-                        placeholder="admin3@club.com"
-                        className={`${inputStyles} ${errors.admin3_email ? inputErrorStyles : inputNormalStyles}`}
-                      />
-                      {errors.admin3_email && (
-                        <p className="text-sm text-red-700 font-medium">{errors.admin3_email.message}</p>
                       )}
                     </div>
                   </div>

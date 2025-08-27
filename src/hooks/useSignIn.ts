@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import api from '@/lib/axios';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SignInData {
@@ -44,6 +43,7 @@ interface RoleInfo {
 interface SignInResponse {
   data: {
     user: User;
+    token?: string;
     role_info: RoleInfo;
   };
   message: string;
@@ -59,7 +59,7 @@ export const useSignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { login } = useAuth();
 
   const signIn = async (data: SignInData): Promise<void> => {
     setIsLoading(true);
@@ -69,51 +69,51 @@ export const useSignIn = () => {
       console.log('🚀 Starting sign in process...');
       console.log('📝 Sign in data:', { ...data, password: '[HIDDEN]' });
 
-      // Make the login request to the correct endpoint
-      const response = await api.post<SignInResponse>('/api/auth/login', data);
+      // Use the login method from AuthContext which handles token storage
+      const user = await login(data.email, data.password);
       
-      console.log('✅ Login successful:', response.data);
+      console.log('✅ Login successful, redirecting based on role:', user.role);
 
-      // Set user in context
-      if (response.data.data.user) {
-        setUser(response.data.data.user);
-        
-        // Redirect based on role
-        const role = response.data.data.user.role;
-        switch (role) {
-          case 'super_admin':
-            router.push('/dashboard');
-            break;
-          case 'liga':
-            router.push('/dashboard/liga');
-            break;
-          case 'club':
-            router.push('/dashboard/club');
-            break;
-          case 'miembro':
-            router.push('/dashboard/miembro');
-            break;
-          default:
-            router.push('/dashboard');
-            break;
-        }
+      // Add a small delay to ensure token is properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Redirect based on role
+      const role = user.role;
+      switch (role) {
+        case 'super_admin':
+          router.push('/dashboard');
+          break;
+        case 'liga':
+          router.push('/dashboard/liga');
+          break;
+        case 'club':
+          router.push('/dashboard/club');
+          break;
+        case 'miembro':
+          router.push('/dashboard/miembro');
+          break;
+        default:
+          router.push('/dashboard');
+          break;
       }
     } catch (err: unknown) {
+      console.error('❌ Sign in failed:', err);
+      
       if (axios.isAxiosError(err)) {
         const data: ErrorResponse | undefined = err.response?.data;
         if (data?.message) {
           setError(data.message);
         } else if (data?.errors) {
           const errors = data.errors;
-            const errorMessages = Object.values(errors).flatMap(e => Array.isArray(e) ? e : [e]);
+          const errorMessages = Object.values(errors).flatMap(e => Array.isArray(e) ? e : [e]);
           setError(errorMessages.join(', '));
         } else {
-          setError(err.message || 'Login failed. Please try again.');
+          setError(err.message || 'Error de conexión. Verifica tu conexión a internet.');
         }
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Login failed. Please try again.');
+        setError('Error inesperado. Por favor, intenta de nuevo.');
       }
     } finally {
       setIsLoading(false);

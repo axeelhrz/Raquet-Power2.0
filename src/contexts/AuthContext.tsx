@@ -108,16 +108,30 @@ const getStoredToken = (): string | null => {
 
 const setStoredToken = (token: string): void => {
   if (typeof window === 'undefined') return;
+  
+  // Store in localStorage for client-side access
   localStorage.setItem('auth_token', token);
+  
+  // Store in cookies for middleware access
+  document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  
   // Set the token in axios headers
   api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  console.log('🔑 Token stored in localStorage, cookies, and axios headers');
 };
 
 const removeStoredToken = (): void => {
   if (typeof window === 'undefined') return;
+  
+  // Remove from localStorage
   localStorage.removeItem('auth_token');
+  
+  // Remove from cookies
+  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  
   // Remove the token from axios headers
   delete api.defaults.headers.common['Authorization'];
+  console.log('🗑️ Token removed from localStorage, cookies, and axios headers');
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -130,9 +144,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await api.post<AuthResponse>('/api/auth/login', { email, password });
       const userData = normalizeUserData(response.data.data.user);
       
-      // If we get a token, store it
+      // Store the token if provided
       if (response.data.data.token) {
         setStoredToken(response.data.data.token);
+        console.log('✅ Token received and stored');
+      } else {
+        console.warn('⚠️ No token received from login response');
       }
       
       setUser(userData);
@@ -140,6 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return userData;
     } catch (error) {
       console.error('❌ Login failed:', error);
+      // Clear any existing token on login failure
+      removeStoredToken();
+      setUser(null);
       throw error;
     }
   };
@@ -147,28 +167,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       console.log('🚪 Logging out user...');
-      await api.post('/api/auth/logout');
+      // Only call logout endpoint if we have a token
+      const token = getStoredToken();
+      if (token) {
+        await api.post('/api/auth/logout');
+      }
     } catch (error) {
-      console.error('❌ Logout failed:', error);
+      console.error('❌ Logout API call failed:', error);
       // Continue with logout even if server request fails
     } finally {
       // Always clear local state and token
       removeStoredToken();
       setUser(null);
-      console.log('✅ Logout successful');
+      console.log('✅ Logout successful - local state cleared');
     }
   };
 
   const checkAuth = async (): Promise<User | null> => {
     try {
-      console.log('🔍 Checking authentication...');
+      const token = getStoredToken();
+      if (!token) {
+        console.log('ℹ️ No token found, user not authenticated');
+        setUser(null);
+        return null;
+      }
+
+      console.log('🔍 Checking authentication with stored token...');
+      // Ensure token is set in headers before making the request
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
       const response = await api.get<AuthResponse>('/api/auth/me');
       const userData = normalizeUserData(response.data.data.user);
       setUser(userData);
       console.log('✅ Auth check successful:', userData);
       return userData;
-    } catch {
-      console.log('ℹ️ User not authenticated');
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        // @ts-expect-error: error may have response property
+        console.log('ℹ️ Auth check failed:', error.response?.status || error.message);
+      } else {
+        console.log('ℹ️ Auth check failed:', (error as Error).message);
+      }
       // Clear invalid token
       removeStoredToken();
       setUser(null);
@@ -182,16 +221,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if we have a stored token
         const token = getStoredToken();
         if (token) {
-          console.log('🔑 Found stored token, setting in axios headers');
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          console.log('🔑 Found stored token, verifying with server...');
           // Try to get user info with the stored token
           await checkAuth();
         } else {
           console.log('ℹ️ No stored token found');
+          setUser(null);
         }
-      } catch {
-        console.log('ℹ️ Initial auth check failed');
+      } catch (error) {
+        console.log('ℹ️ Initial auth check failed:', error);
         removeStoredToken();
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -199,6 +239,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
   }, []);
+
+  // Add token validation on app focus/visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Re-validate token when app becomes visible
+        checkAuth().catch(() => {
+          console.log('Token validation failed on visibility change');
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
 
   const value = {
     user,
