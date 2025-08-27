@@ -480,11 +480,19 @@ export interface Invitation {
 }
 
 export interface InvitationForm {
-  email: string;
-  role: 'liga' | 'club' | 'miembro';
+  receiver_id: number;
+  receiver_type: string;
+  message: string;
+  type: string;
+  expires_at?: string;
+}
+
+// Form type for sending invitations (used in UI components)
+export interface SendInvitationForm {
+  message: string;
+  expires_at: string;
   league_id?: number;
-  club_id?: number;
-  message?: string;
+  league_name?: string;
 }
 
 // Quick Registration types (for censo)
@@ -535,4 +543,9 @@ export interface QuickRegistration {
   full_name?: string;
   age?: number;
   days_waiting?: number;
+}
+
+// Available entities response type (for invitation endpoints)
+export interface AvailableEntitiesResponse {
+  data: PaginatedResponse<League | Club>;
 }
