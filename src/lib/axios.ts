@@ -1,8 +1,18 @@
 import axios from 'axios';
 
-// Use empty baseURL to rely on Next.js rewrites
+// Get the backend URL from environment variables
+const getBackendUrl = (): string => {
+  // In production (Vercel), use the environment variable
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://tu-backend-railway.up.railway.app';
+  }
+  
+  // In development, use local backend or environment variable
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+};
+
 const api = axios.create({
-  baseURL: "",
+  baseURL: getBackendUrl(),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -25,10 +35,10 @@ const getCsrfTokenFromCookie = (): string | null => {
   return null;
 };
 
-// Function to get CSRF token using relative URL
+// Function to get CSRF token using the backend URL
 const getCsrfToken = async (): Promise<void> => {
   try {
-    await axios.get('/sanctum/csrf-cookie', {
+    await axios.get(`${getBackendUrl()}/sanctum/csrf-cookie`, {
       withCredentials: true,
       headers: {
         'Accept': 'application/json',
@@ -56,6 +66,9 @@ const isCSRFExempt = (url: string): boolean => {
 // Request interceptor
 api.interceptors.request.use(
   async (config) => {
+    // Log the request URL for debugging
+    console.log('🌐 Making request to:', `${config.baseURL}${config.url}`);
+    
     // For non-GET requests, ensure we have a CSRF token (except for exempt endpoints)
     if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
       // Skip CSRF token for exempt endpoints
@@ -93,6 +106,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Log the error for debugging
+    console.error('🚨 API Error:', {
+      status: error.response?.status,
+      url: `${originalRequest.baseURL}${originalRequest.url}`,
+      message: error.message,
+      data: error.response?.data
+    });
+    
     // Handle 419 CSRF token mismatch (only for non-exempt endpoints)
     if (error.response?.status === 419 && !originalRequest._retry && !isCSRFExempt(originalRequest.url || '')) {
       originalRequest._retry = true;
@@ -125,11 +146,6 @@ api.interceptors.response.use(
           window.location.href = '/auth/sign-in';
         }
       }
-    }
-    
-    // Only log non-auth related errors to reduce noise
-    if (error.response?.status !== 401 || originalRequest.url?.includes('/api/auth/me')) {
-      console.error('API Error:', error.response?.status, error.response?.data);
     }
     
     return Promise.reject(error);
