@@ -15,7 +15,7 @@ const getBackendUrl = (): string => {
 
 const api = axios.create({
   baseURL: getBackendUrl(),
-  withCredentials: true,
+  withCredentials: false, // Disable cookies for cross-origin requests
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -25,7 +25,7 @@ const api = axios.create({
 
 // Function to get CSRF token from cookie
 const getCsrfTokenFromCookie = (): string | null => {
-  if (typeof document === 'undefined') return null;
+  if (typeof window === 'undefined') return null;
   
   const name = 'XSRF-TOKEN';
   const value = `; ${document.cookie}`;
@@ -37,19 +37,25 @@ const getCsrfTokenFromCookie = (): string | null => {
   return null;
 };
 
+// Function to get stored auth token
+const getStoredToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+};
+
 // Function to get CSRF token using the backend URL
 const getCsrfToken = async (): Promise<void> => {
   try {
     const backendUrl = getBackendUrl();
     await axios.get(`${backendUrl}/sanctum/csrf-cookie`, {
-      withCredentials: true,
+      withCredentials: false, // Don't use cookies for CSRF in cross-origin
       headers: {
         'Accept': 'application/json',
       },
     });
   } catch (error) {
     console.error('Failed to get CSRF token:', error);
-    throw error;
+    // Don't throw error for CSRF token failures in cross-origin setup
   }
 };
 
@@ -74,29 +80,16 @@ api.interceptors.request.use(
     console.log('🔧 Backend URL:', getBackendUrl());
     console.log('🌍 Environment:', process.env.NODE_ENV);
     
-    // For non-GET requests, ensure we have a CSRF token (except for exempt endpoints)
-    if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
-      // Skip CSRF token for exempt endpoints
-      if (!isCSRFExempt(config.url || '')) {
-        try {
-          // First, try to get CSRF token from cookie
-          let csrfToken = getCsrfTokenFromCookie();
-          
-          // If no token in cookie, fetch it
-          if (!csrfToken) {
-            await getCsrfToken();
-            csrfToken = getCsrfTokenFromCookie();
-          }
-          
-          // Add CSRF token to headers
-          if (csrfToken) {
-            config.headers['X-XSRF-TOKEN'] = csrfToken;
-          }
-        } catch (error) {
-          console.error('Failed to get CSRF token:', error);
-        }
-      }
+    // Always add the auth token if available
+    const token = getStoredToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 Added auth token to request');
     }
+    
+    // For cross-origin requests, skip CSRF tokens as they don't work reliably
+    // The backend should be configured to not require CSRF for API endpoints
+    // when using token-based authentication
     
     return config;
   },
@@ -107,7 +100,11 @@ api.interceptors.request.use(
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful responses for debugging
+    console.log('✅ Request successful:', response.status, response.config.url);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     
@@ -119,38 +116,31 @@ api.interceptors.response.use(
       data: error.response?.data
     });
     
-    // Handle 419 CSRF token mismatch (only for non-exempt endpoints)
-    if (error.response?.status === 419 && !originalRequest._retry && !isCSRFExempt(originalRequest.url || '')) {
-      originalRequest._retry = true;
-      
-      try {
-        // Get fresh CSRF token
-        await getCsrfToken();
-        
-        // Get the new token from cookie and add to headers
-        const csrfToken = getCsrfTokenFromCookie();
-        if (csrfToken) {
-          originalRequest.headers['X-XSRF-TOKEN'] = csrfToken;
-        }
-        
-        // Retry the original request
-        return api(originalRequest);
-      } catch (csrfError) {
-        console.error('Failed to refresh CSRF token:', csrfError);
-        return Promise.reject(error);
-      }
-    }
-    
-    // Handle 401 Unauthorized - only redirect for non-auth endpoints
+    // Handle 401 Unauthorized - token expired or invalid
     if (error.response?.status === 401) {
+      console.log('🚨 401 Unauthorized - clearing token and redirecting');
+      
+      // Clear the invalid token
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        delete api.defaults.headers.common['Authorization'];
+      }
+      
       // Only redirect if it's not an auth endpoint and we're in the browser
       if (!originalRequest.url?.includes('/api/auth/') && typeof window !== 'undefined') {
         // Avoid infinite redirects by checking current location
         if (!window.location.pathname.startsWith('/auth/')) {
-          console.log('401 error detected, redirecting to login');
+          console.log('🔄 Redirecting to login');
           window.location.href = '/auth/sign-in';
         }
       }
+    }
+    
+    // Handle 403 Forbidden - insufficient permissions
+    if (error.response?.status === 403) {
+      console.log('🚨 403 Forbidden - insufficient permissions');
+      // Don't redirect, let the component handle this
     }
     
     return Promise.reject(error);

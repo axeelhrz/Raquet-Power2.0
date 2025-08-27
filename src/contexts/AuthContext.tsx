@@ -70,6 +70,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuth: () => Promise<User | null>;
   setUser: (user: User | null) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,7 +113,7 @@ const setStoredToken = (token: string): void => {
   // Store in localStorage for client-side access
   localStorage.setItem('auth_token', token);
   
-  // Store in cookies for middleware access
+  // Store in cookies for middleware access (same-site only)
   document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
   
   // Set the token in axios headers
@@ -170,11 +171,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Only call logout endpoint if we have a token
       const token = getStoredToken();
       if (token) {
-        await api.post('/api/auth/logout');
+        try {
+          await api.post('/api/auth/logout');
+        } catch (error) {
+          console.error('❌ Logout API call failed:', error);
+          // Continue with logout even if server request fails
+        }
       }
-    } catch (error) {
-      console.error('❌ Logout API call failed:', error);
-      // Continue with logout even if server request fails
     } finally {
       // Always clear local state and token
       removeStoredToken();
@@ -215,6 +218,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        console.log('ℹ️ No token found, cannot refresh user');
+        return;
+      }
+
+      console.log('🔄 Refreshing user data...');
+      // Ensure token is set in headers before making the request
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      const response = await api.get<AuthResponse>('/api/auth/me');
+      const userData = normalizeUserData(response.data.data.user);
+      setUser(userData);
+      console.log('✅ User data refreshed:', userData);
+    } catch (error: unknown) {
+      console.error('❌ Failed to refresh user data:', error);
+      // Don't clear token on refresh failure, just log the error
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -222,6 +247,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = getStoredToken();
         if (token) {
           console.log('🔑 Found stored token, verifying with server...');
+          // Set token in axios headers immediately
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           // Try to get user info with the stored token
           await checkAuth();
         } else {
@@ -257,12 +284,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
+  // Set up token in axios headers when user changes
+  useEffect(() => {
+    const token = getStoredToken();
+    if (token && user) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }, [user]);
+
   const value = {
     user,
     loading,
     login,
     logout,
     checkAuth,
+    refreshUser,
     setUser: (userData: User | null) => {
       setUser(userData ? normalizeUserData(userData) : null);
     },

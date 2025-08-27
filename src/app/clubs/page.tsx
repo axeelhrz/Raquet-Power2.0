@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import ClubModal from '@/components/clubs/ClubModal';
 import DeleteConfirmationModal from '@/components/ui/DeleteConfirmationModal';
 import { useAuthenticatedRequest } from '@/hooks/useAuthenticatedRequest';
+import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/axios';
 import { Club, ClubForm, League, PaginatedResponse } from '@/types';
 import { AxiosError } from 'axios';
@@ -24,6 +25,7 @@ export default function ClubsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { makeRequest } = useAuthenticatedRequest();
+  const { refreshUser } = useAuth();
 
   const fetchClubs = useCallback(async () => {
     try {
@@ -66,8 +68,9 @@ export default function ClubsPage() {
   const handleSubmit = async (data: ClubForm) => {
     try {
       setIsSubmitting(true);
+      console.log('🏢 Submitting club data:', data);
       
-      await makeRequest(async () => {
+      const response = await makeRequest(async () => {
         if (editingClub) {
           return api.put(`/api/clubs/${editingClub.id}`, data);
         } else {
@@ -75,15 +78,24 @@ export default function ClubsPage() {
         }
       });
       
+      console.log('✅ Club operation successful:', response);
+      
+      // Refresh user data to get updated role information
+      console.log('🔄 Refreshing user data after club creation/update');
+      await refreshUser();
+      
       setShowForm(false);
       setEditingClub(undefined);
-      fetchClubs();
+      
+      // Refresh clubs list
+      await fetchClubs();
+      
+      console.log('✅ Club operation completed successfully');
     } catch (error: unknown) {
+      console.error('❌ Error saving club:', error);
       if (error instanceof Error) {
-        console.error('Error saving club:', error.message);
         alert('Error al guardar el club: ' + error.message);
       } else {
-        console.error('Error saving club:', error);
         alert('Error al guardar el club');
       }
     } finally {
@@ -110,6 +122,9 @@ export default function ClubsPage() {
       await makeRequest(() => 
         api.delete(`/api/clubs/${clubToDelete.id}`)
       );
+      
+      // Refresh user data after deletion
+      await refreshUser();
       
       setShowDeleteModal(false);
       setClubToDelete(null);
