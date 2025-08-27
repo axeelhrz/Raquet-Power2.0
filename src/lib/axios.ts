@@ -4,11 +4,11 @@ import axios from 'axios';
 const getBackendUrl = (): string => {
   // In production (Vercel), use the environment variable
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://tu-backend-railway.up.railway.app';
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'web-production-40b3.up.railway.app';
   }
   
   // In development, use local backend or environment variable
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://raquet-power2-0.vercel.app/api';
 };
 
 const api = axios.create({
