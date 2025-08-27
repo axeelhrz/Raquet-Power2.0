@@ -26,6 +26,48 @@ import MemberModal from '@/components/members/MemberModal';
 import DeleteConfirmationModal from '@/components/ui/DeleteConfirmationModal';
 import axios from '@/lib/axios';
 
+// Define the expected member data structure for API calls
+interface MemberFormData {
+  club_id: number;
+  first_name: string;
+  last_name: string;
+  doc_id?: string;
+  email?: string;
+  phone?: string;
+  birth_date?: string;
+  gender?: 'male' | 'female' | 'other';
+  status: 'active' | 'inactive';
+  country?: string;
+  province?: string;
+  city?: string;
+  dominant_hand?: 'right' | 'left';
+  playing_side?: 'derecho' | 'zurdo';
+  playing_style?: 'clasico' | 'lapicero';
+  racket_brand?: string;
+  racket_model?: string;
+  racket_custom_brand?: string;
+  racket_custom_model?: string;
+  drive_rubber_brand?: string;
+  drive_rubber_model?: string;
+  drive_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
+  drive_rubber_color?: 'negro' | 'rojo' | 'verde' | 'azul' | 'amarillo' | 'morado' | 'fucsia';
+  drive_rubber_sponge?: string;
+  drive_rubber_hardness?: string;
+  drive_rubber_custom_brand?: string;
+  drive_rubber_custom_model?: string;
+  backhand_rubber_brand?: string;
+  backhand_rubber_model?: string;
+  backhand_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
+  backhand_rubber_color?: 'negro' | 'rojo' | 'verde' | 'azul' | 'amarillo' | 'morado' | 'fucsia';
+  backhand_rubber_sponge?: string;
+  backhand_rubber_hardness?: string;
+  backhand_rubber_custom_brand?: string;
+  backhand_rubber_custom_model?: string;
+  notes?: string;
+  ranking_position?: number;
+  ranking_last_updated?: string;
+}
+
 export default function ClubMembersPage() {
   const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
@@ -55,11 +97,11 @@ export default function ClubMembersPage() {
         const clubsResponse = await axios.get('/api/clubs');
         console.log('Clubs response:', clubsResponse.data);
         
-        const allClubs = clubsResponse.data.data; // Aquí está el fix - acceder a data.data
+        const allClubs = clubsResponse.data.data;
         console.log('All clubs:', allClubs);
         
         // Find the club that belongs to this user
-        const userClub = allClubs.data.find((club: Club) => club.user_id === user.id); // Y aquí también - allClubs.data
+        const userClub = allClubs.data.find((club: Club) => club.user_id === user.id);
         console.log('User club found:', userClub);
         
         if (userClub) {
@@ -67,7 +109,7 @@ export default function ClubMembersPage() {
           setClubs([userClub]);
           
           // Fetch members for this club
-            console.log('Fetching members for club:', userClub.id);
+          console.log('Fetching members for club:', userClub.id);
           const membersResponse = await axios.get(`/api/members?club_id=${userClub.id}`);
           console.log('Members response:', membersResponse.data);
           
@@ -174,31 +216,207 @@ export default function ClubMembersPage() {
     setIsDeleteModalOpen(true);
   };
 
-  // Use Partial<Member> to allow creating with a subset of fields while avoiding 'any'
-  const handleCreateMember = async (memberData: Partial<Member>) => {
+  const handleCreateMember = async (memberData: MemberFormData, photo?: File) => {
     try {
-      console.log('Creating member with data:', memberData);
-      const response = await axios.post('/api/members', memberData);
-      console.log('Member created successfully:', response.data);
+      console.log('🏃‍♂️ Creating member with data:', memberData);
+      console.log('📸 Photo provided:', !!photo);
+      console.log('🏢 Current club:', currentClub);
+      
+      // Ensure we have a club_id
+      if (!memberData.club_id && currentClub) {
+        memberData.club_id = currentClub.id;
+        console.log('🔧 Set club_id from current club:', currentClub.id);
+      }
+      
+      // Validate required fields
+      if (!memberData.club_id) {
+        throw new Error('Club ID is required');
+      }
+      
+      if (!memberData.first_name || !memberData.last_name) {
+        throw new Error('First name and last name are required');
+      }
+      
+      // Clean up the data - remove undefined values and empty strings
+      const cleanedData: Partial<MemberFormData> = {};
+      Object.entries(memberData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          cleanedData[key as keyof MemberFormData] = value;
+        }
+      });
+      
+      console.log('🧹 Cleaned data to send:', cleanedData);
+      
+      // If we have a photo, use FormData
+      if (photo) {
+        const formData = new FormData();
+        
+        // Add all member data to FormData
+        Object.entries(cleanedData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, value.toString());
+          }
+        });
+        
+        // Add photo
+        formData.append('photo', photo);
+        
+        console.log('📤 Sending FormData with photo');
+        const response = await axios.post('/api/members', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        console.log('✅ Member created successfully with photo:', response.data);
+      } else {
+        console.log('📤 Sending JSON data without photo');
+        const response = await axios.post('/api/members', cleanedData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('✅ Member created successfully:', response.data);
+      }
+      
       await fetchData();
       setIsCreateModalOpen(false);
-    } catch (error) {
-      console.error('Error creating member:', error);
+    } catch (error: unknown) {
+      console.error('❌ Error creating member:', error);
+
+      // Better error handling
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: unknown }).response === 'object'
+      ) {
+        const response = (typeof error === 'object' && error !== null && 'response' in error)
+          ? (error as { response: unknown }).response
+          : undefined;
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'status' in response &&
+          (response as { status?: number }).status === 422
+        ) {
+          type ValidationResponse = { data: { errors?: Record<string, string[]> } };
+          const validationResponse = response as unknown as ValidationResponse;
+          console.error('🚨 Validation errors:', validationResponse.data);
+          const validationErrors = validationResponse.data.errors || {};
+          const errorMessages = Object.entries(validationErrors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+
+          alert(`Error de validación:\n${errorMessages}`);
+        } else if (
+          typeof response === 'object' &&
+          response !== null &&
+          'data' in response &&
+          (response as { data?: { message?: string } }).data?.message
+        ) {
+          alert(`Error: ${(response as { data: { message: string } }).data.message}`);
+        } else {
+          alert(`Error al crear miembro: ${(error as unknown as Error).message}`);
+        }
+      } else if (error instanceof Error) {
+        alert(`Error al crear miembro: ${error.message}`);
+      } else {
+        alert('Error al crear miembro');
+      }
+
       throw error;
     }
   };
-  // Use Partial<Member> for updates (not all fields must be present)
-  const handleUpdateMember = async (memberData: Partial<Member>) => {
+
+  const handleUpdateMember = async (memberData: MemberFormData, photo?: File) => {
     try {
-      console.log('Updating member with data:', memberData);
+      console.log('🔄 Updating member with data:', memberData);
+      console.log('📸 Photo provided:', !!photo);
+      
       if (!selectedMember) return;
       
-      const response = await axios.put(`/api/members/${selectedMember.id}`, memberData);
-      console.log('Member updated successfully:', response.data);
+      // Clean up the data - remove undefined values and empty strings
+      const cleanedData: Partial<MemberFormData> = {};
+      Object.entries(memberData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          cleanedData[key as keyof MemberFormData] = value;
+        }
+      });
+      
+      console.log('🧹 Cleaned data to send:', cleanedData);
+      
+      // If we have a photo, use FormData
+      if (photo) {
+        const formData = new FormData();
+        
+        // Add all member data to FormData
+        Object.entries(cleanedData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, value.toString());
+          }
+        });
+        
+        // Add photo
+        formData.append('photo', photo);
+        
+        console.log('📤 Sending FormData with photo for update');
+        const response = await axios.post(`/api/members/${selectedMember.id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'X-HTTP-Method-Override': 'PUT'
+          },
+        });
+        console.log('✅ Member updated successfully with photo:', response.data);
+      } else {
+        console.log('📤 Sending JSON data without photo for update');
+        const response = await axios.put(`/api/members/${selectedMember.id}`, cleanedData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('✅ Member updated successfully:', response.data);
+      }
+      
       await fetchData();
       setIsEditModalOpen(false);
-    } catch (error) {
-      console.error('Error updating member:', error);
+    } catch (error: unknown) {
+      console.error('❌ Error updating member:', error);
+
+      // Better error handling
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: unknown }).response === 'object'
+      ) {
+        const response = (error as { response: unknown }).response;
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'status' in response &&
+          (response as { status?: number }).status === 422
+        ) {
+          const validationErrors = (response as { data?: { errors?: Record<string, string[]> } }).data?.errors || {};
+          const errorMessages = Object.entries(validationErrors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          alert(`Error de validación:\n${errorMessages}`);
+        } else if (
+          typeof response === 'object' &&
+          response !== null &&
+          'data' in response &&
+          (response as { data?: { message?: string } }).data?.message
+        ) {
+          alert(`Error: ${(response as { data: { message: string } }).data.message}`);
+        } else {
+          alert(`Error al actualizar miembro: ${(error as unknown as Error).message}`);
+        }
+      } else if (error instanceof Error) {
+        alert(`Error al actualizar miembro: ${error.message}`);
+      } else {
+        alert('Error al actualizar miembro');
+      }
+
       throw error;
     }
   };
@@ -207,11 +425,28 @@ export default function ClubMembersPage() {
     try {
       if (!selectedMember) return;
       
+      console.log('🗑️ Deleting member:', selectedMember.id);
       await axios.delete(`/api/members/${selectedMember.id}`);
+      console.log('✅ Member deleted successfully');
+      
       await fetchData();
       setIsDeleteModalOpen(false);
-    } catch (error) {
-      console.error('Error deleting member:', error);
+    } catch (error: unknown) {
+      console.error('❌ Error deleting member:', error);
+
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: unknown }).response === 'object' &&
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      ) {
+        alert(`Error: ${(error as { response: { data: { message: string } } }).response.data.message}`);
+      } else if (error instanceof Error) {
+        alert(`Error al eliminar miembro: ${error.message}`);
+      } else {
+        alert('Error al eliminar miembro');
+      }
     }
   };
 
