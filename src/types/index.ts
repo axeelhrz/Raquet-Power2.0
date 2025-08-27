@@ -61,7 +61,6 @@ export interface Club {
   founded_date?: string;
   
   // Club statistics
-  number_of_tables?: number;
   can_create_tournaments?: boolean;
   
   // Representative information
@@ -297,7 +296,6 @@ export interface ClubForm {
   founded_date?: string;
   
   // Club statistics
-  number_of_tables?: number;
   can_create_tournaments?: boolean;
   
   // Representative information

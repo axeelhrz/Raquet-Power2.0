@@ -4,7 +4,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://web-production-40b3.up.railway.app/api/:path*',
+        destination: 'http://127.0.0.1:8000/api/:path*',
+      },
+      {
+        source: '/sanctum/:path*',
+        destination: 'http://127.0.0.1:8000/sanctum/:path*',
       },
     ];
   },
