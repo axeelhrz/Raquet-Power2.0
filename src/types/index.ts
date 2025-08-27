@@ -451,16 +451,24 @@ export interface TournamentForm {
   league_id?: number;
 }
 
+// Invitation filter types
+export interface InvitationFilters {
+  type: 'all' | 'sent' | 'received';
+  status: 'all' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  search: string;
+}
+
 // Invitation types
 export interface Invitation {
   id: number;
   email: string;
   role: 'liga' | 'club' | 'miembro';
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
   invited_by: number;
   expires_at: string;
   accepted_at?: string;
   rejected_at?: string;
+  responded_at?: string;
   created_at: string;
   updated_at: string;
   inviter?: User;
@@ -477,6 +485,22 @@ export interface Invitation {
     club_name?: string;
     message?: string;
   };
+  
+  // Extended properties for invitation management
+  is_sender?: boolean;
+  sender_name?: string;
+  receiver_name?: string;
+  sender_details?: {
+    type?: string;
+    city?: string;
+    province?: string;
+  };
+  receiver_details?: {
+    type?: string;
+    city?: string;
+    province?: string;
+  };
+  message?: string;
 }
 
 export interface InvitationForm {
