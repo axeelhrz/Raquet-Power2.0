@@ -241,6 +241,7 @@ export interface Sport {
   created_at: string;
   updated_at: string;
   parameters?: SportParameter[];
+  parameters_count?: number;
 }
 
 export interface SportParameter {
@@ -254,17 +255,26 @@ export interface SportParameter {
   created_at: string;
   updated_at: string;
   sport?: Sport;
+  
+  // Additional properties used in the sports management
+  param_key: string;
+  param_value: string;
+  param_type: 'text' | 'number' | 'select' | 'boolean';
+  unit?: string;
+  description?: string;
+  category?: string;
+  typed_value: string | number | boolean;
 }
 
 // Form types
 export interface LeagueForm {
   name: string;
   province: string;
-  region: string;
-  admin_email: string;
-  admin_name: string;
-  admin_phone: string;
-  status: 'active' | 'inactive';
+  region?: string;
+  admin_email?: string;
+  admin_name?: string;
+  admin_phone?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface ClubForm {
