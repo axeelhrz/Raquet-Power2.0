@@ -420,7 +420,7 @@ const QuickRegistrationWaitingRoom: React.FC<QuickRegistrationWaitingRoomProps> 
           </button>
           
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = 'https://raquet-power2-0.vercel.app/registro-rapido'}
             className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200 font-bold"
           >
             Volver al Inicio
