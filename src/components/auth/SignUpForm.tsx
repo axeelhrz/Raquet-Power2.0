@@ -127,7 +127,7 @@ const signUpSchema = z.object({
   league_name: z.string().optional(),
   province: z.string().optional(),
   
-  // Club fields - Enhanced (removed latitude, longitude, number_of_tables)
+  // Club fields - Enhanced (removed latitude, longitude, number_of_tables, can_create_tournaments)
   club_name: z.string().optional(),
   parent_league_id: z.string().or(z.undefined()).transform((val) => (val && val.trim() !== '' ? val : undefined)),
   city: z.string().optional(),
@@ -136,7 +136,6 @@ const signUpSchema = z.object({
   google_maps_url: z.string().url('URL inválida').optional().or(z.literal('')),
   description: z.string().optional(),
   founded_date: z.string().optional(),
-  can_create_tournaments: z.boolean().optional(),
   
   // Club representative
   representative_name: z.string().optional(),
@@ -385,7 +384,6 @@ const SignUpForm: React.FC = () => {
       google_maps_url: '',
       description: '',
       founded_date: '',
-      can_create_tournaments: false,
       representative_name: '',
       representative_phone: '',
       representative_email: '',
@@ -978,34 +976,6 @@ const SignUpForm: React.FC = () => {
                           multiline: true,
                           rows: 3
                         })}
-
-                        <Controller
-                          name="can_create_tournaments"
-                          control={control}
-                          render={({ field }) => (
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  {...field}
-                                  checked={field.value || false}
-                                  sx={{
-                                    '&.Mui-checked': {
-                                      color: selectedRoleData.color,
-                                    },
-                                  }}
-                                />
-                              }
-                              label="Puede crear torneos por ranking"
-                              sx={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                                borderRadius: 2,
-                                p: 2,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                              }}
-                            />
-                          )}
-                        />
 
                         <Divider sx={{ my: 2 }} />
                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
