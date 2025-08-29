@@ -255,7 +255,7 @@ export default function ClubDashboardPage() {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <Link 
               href="/dashboard/club/members"
               className="flex items-center p-6 border-2 border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all duration-200 group"
@@ -266,32 +266,6 @@ export default function ClubDashboardPage() {
               <div className="ml-4">
                 <p className="font-semibold text-gray-900">Gestionar Miembros</p>
                 <p className="text-sm text-gray-500">Agregar y administrar miembros</p>
-              </div>
-            </Link>
-
-            <Link 
-              href="/leagues"
-              className="flex items-center p-6 border-2 border-gray-200 rounded-xl hover:border-yellow-300 hover:bg-yellow-50 transition-all duration-200 group"
-            >
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors">
-                <TrophyIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="font-semibold text-gray-900">Ver Ligas</p>
-                <p className="text-sm text-gray-500">Ligas disponibles y afiliaciones</p>
-              </div>
-            </Link>
-
-            <Link 
-              href="/sports"
-              className="flex items-center p-6 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
-            >
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <ChartBarIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="font-semibold text-gray-900">Deportes</p>
-                <p className="text-sm text-gray-500">Gestionar deportes del club</p>
               </div>
             </Link>
           </div>

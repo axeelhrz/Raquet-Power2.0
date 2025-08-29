@@ -11,7 +11,6 @@ import {
   CogIcon,
   ChartBarIcon,
   BellIcon,
-  PaperAirplaneIcon,
   ArrowRightOnRectangleIcon,
   MapPinIcon
 } from '@heroicons/react/24/outline';
@@ -60,12 +59,6 @@ export default function LeagueLayout({ children }: LeagueLayoutProps) {
       href: '/dashboard/liga/invitations', 
       icon: BellIcon,
       current: pathname.startsWith('/dashboard/liga/invitations') 
-    },
-    { 
-      name: 'Enviar Invitaciones', 
-      href: '/dashboard/liga/send-invitations', 
-      icon: PaperAirplaneIcon,
-      current: pathname.startsWith('/dashboard/liga/send-invitations') 
     },
     { 
       name: 'Estadísticas', 

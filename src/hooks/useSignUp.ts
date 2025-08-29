@@ -26,7 +26,6 @@ interface SignUpData {
   google_maps_url?: string;
   description?: string;
   founded_date?: string;
-  can_create_tournaments?: boolean;
   representative_name?: string;
   representative_phone?: string;
   representative_email?: string;

@@ -18,9 +18,11 @@ import { isAxiosError } from 'axios';
 import { testApiConnection, testRegistroRapido } from '@/utils/testApiConnection';
 
 const registroRapidoSchema = z.object({
-  // Información personal básica
-  first_name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  last_name: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
+  // Información personal básica - ACTUALIZADO: nombres y apellidos separados
+  first_name: z.string().min(2, 'El primer nombre debe tener al menos 2 caracteres'),
+  second_name: z.string().optional(),
+  last_name: z.string().min(2, 'El primer apellido debe tener al menos 2 caracteres'),
+  second_last_name: z.string().optional(),
   doc_id: z.string().optional(),
   email: z.string().email('Por favor ingresa un email válido'),
   phone: z.string().min(10, 'El teléfono debe tener al menos 10 dígitos'),
@@ -34,6 +36,7 @@ const registroRapidoSchema = z.object({
   
   // Club (sin federación)
   club_name: z.string().optional(),
+  custom_club_name: z.string().optional(),
   
   // Estilo de juego
   playing_side: z.enum(['derecho', 'zurdo']).optional(),
@@ -79,20 +82,165 @@ type RegistrationData = {
   [key: string]: unknown;
 };
 
+// ACTUALIZADO: Más ciudades por provincia
 const ECUADOR_PROVINCES = [
-  { name: 'Guayas', cities: ['Guayaquil', 'Milagro', 'Buena Fe', 'Daule', 'Durán'] },
-  { name: 'Pichincha', cities: ['Quito', 'Cayambe', 'Mejía', 'Pedro Moncayo', 'Rumiñahui'] },
-  { name: 'Manabí', cities: ['Manta', 'Portoviejo', 'Chone', 'Montecristi', 'Jipijapa'] },
-  { name: 'Azuay', cities: ['Cuenca', 'Gualaceo', 'Paute', 'Santa Isabel', 'Sigsig'] },
-  { name: 'Tungurahua', cities: ['Ambato', 'Baños', 'Cevallos', 'Mocha', 'Patate'] },
-  { name: 'Los Ríos', cities: ['Quevedo', 'Babahoyo', 'Ventanas', 'Vinces', 'Urdaneta'] },
-  { name: 'Santa Elena', cities: ['La Libertad', 'Salinas', 'Santa Elena'] },
-  { name: 'Galápagos', cities: ['Puerto Ayora', 'Puerto Baquerizo Moreno', 'Puerto Villamil'] },
-  { name: 'El Oro', cities: ['Machala', 'Pasaje', 'Santa Rosa', 'Huaquillas', 'Arenillas'] },
-  { name: 'Esmeraldas', cities: ['Esmeraldas', 'Atacames', 'Muisne', 'Quinindé', 'San Lorenzo'] },
+  { 
+    name: 'Guayas', 
+    cities: [
+      'Guayaquil', 'Milagro', 'Buena Fe', 'Daule', 'Durán', 'Samborondón', 
+      'Playas', 'El Triunfo', 'Yaguachi', 'Balao', 'Naranjal', 'Balzar',
+      'Colimes', 'Palestina', 'Pedro Carbo', 'Santa Lucía', 'Salitre',
+      'Isidro Ayora', 'Lomas de Sargentillo', 'Nobol', 'Marcelino Maridueña',
+      'Alfredo Baquerizo Moreno', 'Simón Bolívar', 'Coronel Marcelino Maridueña'
+    ] 
+  },
+  { 
+    name: 'Pichincha', 
+    cities: [
+      'Quito', 'Cayambe', 'Mejía', 'Pedro Moncayo', 'Rumiñahui', 'San Miguel de los Bancos',
+      'Puerto Quito', 'Pedro Vicente Maldonado', 'Machachi', 'Sangolquí', 'Tabacundo',
+      'El Quinche', 'Conocoto', 'Tumbaco', 'Cumbayá', 'Calderón', 'Pomasqui',
+      'San Antonio de Pichincha', 'Alangasí', 'Amaguaña', 'Cutuglahua'
+    ] 
+  },
+  { 
+    name: 'Manabí', 
+    cities: [
+      'Manta', 'Portoviejo', 'Chone', 'Montecristi', 'Jipijapa', 'Bahía de Caráquez',
+      'El Carmen', 'Flavio Alfaro', 'Calceta', 'Tosagua', 'Rocafuerte', 'Santa Ana',
+      'Sucre', 'Bolívar', 'Junín', 'Paján', 'Pichincha', 'Olmedo', 'Puerto López',
+      'Jama', 'Pedernales', 'San Vicente', 'Jaramijó', 'Crucita', '24 de Mayo'
+    ] 
+  },
+  { 
+    name: 'Azuay', 
+    cities: [
+      'Cuenca', 'Gualaceo', 'Paute', 'Santa Isabel', 'Sigsig', 'Chordeleg',
+      'El Pan', 'Guachapala', 'Girón', 'San Fernando', 'Nabón', 'Oña',
+      'Pucará', 'Camilo Ponce Enríquez', 'Sevilla de Oro'
+    ] 
+  },
+  { 
+    name: 'Tungurahua', 
+    cities: [
+      'Ambato', 'Baños', 'Cevallos', 'Mocha', 'Patate', 'Pelileo', 'Píllaro',
+      'Quero', 'Tisaleo', 'Huachi Grande', 'Salasaca', 'Quisapincha'
+    ] 
+  },
+  { 
+    name: 'Los Ríos', 
+    cities: [
+      'Quevedo', 'Babahoyo', 'Ventanas', 'Vinces', 'Urdaneta', 'Baba', 'Buena Fe',
+      'Mocache', 'Palenque', 'Pueblo Viejo', 'Ricaurte', 'Valencia', 'Montalvo'
+    ] 
+  },
+  { 
+    name: 'Santa Elena', 
+    cities: ['La Libertad', 'Salinas', 'Santa Elena', 'Manglaralto', 'Colonche', 'Chanduy'] 
+  },
+  { 
+    name: 'Galápagos', 
+    cities: ['Puerto Ayora', 'Puerto Baquerizo Moreno', 'Puerto Villamil', 'Bellavista'] 
+  },
+  { 
+    name: 'El Oro', 
+    cities: [
+      'Machala', 'Pasaje', 'Santa Rosa', 'Huaquillas', 'Arenillas', 'Atahualpa',
+      'Balsas', 'Chilla', 'El Guabo', 'Las Lajas', 'Marcabelí', 'Piñas',
+      'Portovelo', 'Zaruma'
+    ] 
+  },
+  { 
+    name: 'Esmeraldas', 
+    cities: [
+      'Esmeraldas', 'Atacames', 'Muisne', 'Quinindé', 'San Lorenzo', 'Rioverde',
+      'La Tola', 'Eloy Alfaro', 'Tonsupa', 'Súa', 'Same', 'Tonchigüe'
+    ] 
+  },
+  { 
+    name: 'Imbabura', 
+    cities: [
+      'Ibarra', 'Otavalo', 'Cotacachi', 'Antonio Ante', 'Pimampiro', 'Urcuquí',
+      'Atuntaqui', 'Ilumán', 'Natabuela', 'San Pablo del Lago'
+    ] 
+  },
+  { 
+    name: 'Loja', 
+    cities: [
+      'Loja', 'Catamayo', 'Cariamanga', 'Macará', 'Catacocha', 'Alamor',
+      'Célica', 'Pindal', 'Puyango', 'Saraguro', 'Sozoranga', 'Zapotillo',
+      'Gonzanamá', 'Quilanga', 'Calvas', 'Espíndola'
+    ] 
+  },
+  { 
+    name: 'Cañar', 
+    cities: ['Azogues', 'Cañar', 'La Troncal', 'El Tambo', 'Déleg', 'Suscal', 'Biblián'] 
+  },
+  { 
+    name: 'Chimborazo', 
+    cities: [
+      'Riobamba', 'Alausí', 'Colta', 'Chambo', 'Chunchi', 'Guamote',
+      'Guano', 'Pallatanga', 'Penipe', 'Cumandá'
+    ] 
+  },
+  { 
+    name: 'Bolívar', 
+    cities: [
+      'Guaranda', 'Chillanes', 'Chimbo', 'Echeandía', 'Las Naves',
+      'Caluma', 'San Miguel'
+    ] 
+  },
+  { 
+    name: 'Carchi', 
+    cities: ['Tulcán', 'Bolívar', 'Espejo', 'Mira', 'Montúfar', 'San Pedro de Huaca'] 
+  },
+  { 
+    name: 'Cotopaxi', 
+    cities: [
+      'Latacunga', 'La Maná', 'Pangua', 'Pujilí', 'Salcedo', 'Saquisilí',
+      'Sigchos'
+    ] 
+  },
+  { 
+    name: 'Napo', 
+    cities: ['Tena', 'Archidona', 'El Chaco', 'Quijos', 'Carlos Julio Arosemena Tola'] 
+  },
+  { 
+    name: 'Pastaza', 
+    cities: ['Puyo', 'Arajuno', 'Mera', 'Santa Clara'] 
+  },
+  { 
+    name: 'Morona Santiago', 
+    cities: [
+      'Macas', 'Gualaquiza', 'Limón Indanza', 'Palora', 'Santiago', 'Sucúa',
+      'Huamboya', 'San Juan Bosco', 'Taisha', 'Logroño', 'Pablo Sexto', 'Tiwintza'
+    ] 
+  },
+  { 
+    name: 'Zamora Chinchipe', 
+    cities: [
+      'Zamora', 'Chinchipe', 'Nangaritza', 'Yacuambi', 'Yantzaza', 'El Pangui',
+      'Centinela del Cóndor', 'Palanda', 'Paquisha'
+    ] 
+  },
+  { 
+    name: 'Sucumbíos', 
+    cities: [
+      'Nueva Loja', 'Gonzalo Pizarro', 'Putumayo', 'Shushufindi', 'Sucumbíos',
+      'Cascales', 'Cuyabeno'
+    ] 
+  },
+  { 
+    name: 'Orellana', 
+    cities: ['Francisco de Orellana', 'Aguarico', 'La Joya de los Sachas', 'Loreto'] 
+  },
+  { 
+    name: 'Santo Domingo', 
+    cities: ['Santo Domingo', 'La Concordia'] 
+  }
 ];
 
-// Updated club list as requested
+// ACTUALIZADO: Más clubes
 const TT_CLUBS_ECUADOR = [
   'PPH',
   'Cuenca',
@@ -115,14 +263,65 @@ const TT_CLUBS_ECUADOR = [
   'Guayaquil City',
   'Buena Fe',
   'Milagro',
-  'Ping Pong Rick'
+  'Ping Pong Rick',
+  'Club Deportivo Loja',
+  'Azuay TT',
+  'Manabí Spin',
+  'Los Ríos TT',
+  'Tungurahua Ping Pong',
+  'Esmeraldas TT',
+  'Imbabura Racket',
+  'El Oro Table Tennis',
+  'Cañar TT Club',
+  'Chimborazo Ping',
+  'Bolívar TT',
+  'Carchi Racket Club',
+  'Cotopaxi TT',
+  'Oriente TT',
+  'Amazonas Ping Pong',
+  'Costa TT Club',
+  'Sierra Racket',
+  'Selva TT'
 ];
 
 // Updated brands list with Hurricane and Yinhe
 const POPULAR_BRANDS = [
   'Butterfly', 'DHS', 'Sanwei', 'Nittaku', 'Yasaka', 'Stiga', 
   'Victas', 'Joola', 'Xiom', 'Saviga', 'Friendship', 'Dr. Neubauer', 
-  'Double Fish', 'Hurricane', 'Yinhe'
+  'Double Fish', 'Hurricane', 'Yinhe', 'Tibhar', 'Andro', 'Gewo',
+  'Donic', 'Cornilleau', 'Killerspin', 'Palio', 'TSP', 'Avalox'
+];
+
+// ACTUALIZADO: Modelos populares de raquetas
+const POPULAR_RACKET_MODELS = [
+  'Timo Boll ALC', 'Zhang Jike Super ZLC', 'Viscaria', 'Innerforce Layer ALC',
+  'Ma Long Carbon', 'Harimoto ALC', 'Ovtcharov Innerforce ALC', 'Lin Gaoyuan ALC',
+  'Hurricane Long 5', 'Power G7', 'Ma Lin Extra Offensive', 'Kong Linghui',
+  'Primorac Carbon', 'Clipper Wood', 'Allround Classic', 'Offensive Classic',
+  'Evolution MX-P', 'Ligna CO', 'Stratus PowerWood', 'Quantum X Pro',
+  'Carbotec 7000', 'Defplay Senso', 'Waldner Offensive', 'Persson Powerplay'
+];
+
+// ACTUALIZADO: Modelos populares de caucho drive
+const POPULAR_DRIVE_MODELS = [
+  'Tenergy 05', 'Tenergy 80', 'Tenergy 64', 'Hurricane 3', 'Hurricane 8',
+  'Evolution MX-P', 'Evolution MX-S', 'Hexer Powergrip', 'Hexer HD',
+  'Rakza 7', 'Rakza 9', 'Dignics 05', 'Dignics 09C', 'Rozena',
+  'V > 15 Extra', 'V > 20 Double Extra', 'Rhyzer 48', 'Rhyzer 50',
+  'Omega VII Pro', 'Omega VII Euro', 'Acuda Blue P1', 'Acuda Blue P3',
+  'Target Pro GT-H47', 'Target Pro GT-M43', 'Skyline 3', 'Big Dipper',
+  'Cross 729', 'Focus 3', 'Battle 2', 'Friendship 802-40'
+];
+
+// ACTUALIZADO: Modelos populares de caucho back
+const POPULAR_BACKHAND_MODELS = [
+  'Tenergy 05', 'Tenergy 80', 'Tenergy 64', 'Hurricane 3 Neo',
+  'Evolution MX-P', 'Evolution EL-P', 'Hexer Powergrip', 'Hexer Pips+',
+  'Rakza 7 Soft', 'Rakza X', 'Dignics 05', 'Dignics 80', 'Rozena',
+  'V > 15 Extra', 'V > 20 Double Extra', 'Rhyzer 43', 'Rhyzer 48',
+  'Omega VII Pro', 'Omega VII Euro', 'Acuda Blue P2', 'Acuda Blue P1',
+  'Target Pro GT-S43', 'Target Pro GT-M40', 'Grass D.TecS', 'Plaxon 450',
+  'Cross 729-2', 'Focus Snipe', 'Battle 2 Back', 'Friendship 729 Super FX'
 ];
 
 const RUBBER_COLORS = ['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia'];
@@ -135,7 +334,11 @@ const RUBBER_TYPES = [
   { value: 'antitopsping', label: 'Antitopsping' }
 ];
 
-const HARDNESS_LEVELS = ['h42', 'h44', 'h46', 'h48', 'h50'];
+// ACTUALIZADO: Más opciones de hardness incluyendo N/A
+const HARDNESS_LEVELS = [
+  'N/A', 'h35', 'h37', 'h39', 'h40', 'h42', 'h44', 'h46', 'h48', 'h50', 
+  'h52', 'h54', 'Soft', 'Medium', 'Hard', 'Extra Hard'
+];
 
 // Updated sponge thickness options as requested
 const SPONGE_THICKNESSES = ['0,5', '0,7', '1,5', '1,6', '1,8', '1,9', '2', '2,1', '2,2', 'sin esponja'];
@@ -303,6 +506,7 @@ const RegistroRapidoClient: React.FC = () => {
   const [showCustomRacketBrand, setShowCustomRacketBrand] = useState(false);
   const [showCustomDriveRubber, setShowCustomDriveRubber] = useState(false);
   const [showCustomBackhandRubber, setShowCustomBackhandRubber] = useState(false);
+  const [showCustomClub, setShowCustomClub] = useState(false);
   const router = useRouter();
 
   const {
@@ -319,6 +523,7 @@ const RegistroRapidoClient: React.FC = () => {
   });
 
   const watchedProvince = watch('province');
+  const watchedClub = watch('club_name');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
 
   // Handle photo selection
@@ -375,6 +580,11 @@ const RegistroRapidoClient: React.FC = () => {
         }
       });
 
+      // Handle custom club
+      if (data.club_name === 'custom' && data.custom_club_name) {
+        formData.set('club_name', data.custom_club_name);
+      }
+
       // Add photo if selected (optional)
       if (selectedPhoto) {
         // Validate photo size (5MB max)
@@ -414,10 +624,10 @@ const RegistroRapidoClient: React.FC = () => {
       setRegistrationCode(responseData.registration_code || registrationInfo.registration_code || '');
       setRegistrationData({
         ...registrationInfo,
-        full_name: `${data.first_name} ${data.last_name}`,
+        full_name: `${data.first_name} ${data.second_name || ''} ${data.last_name} ${data.second_last_name || ''}`.replace(/\s+/g, ' ').trim(),
         email: data.email,
         location: `${data.city}, ${data.province}`,
-        club: data.club_name || 'Sin club especificado'
+        club: data.custom_club_name || data.club_name || 'Sin club especificado'
       });
       
       setIsSuccess(true);
@@ -557,7 +767,7 @@ const RegistroRapidoClient: React.FC = () => {
                 onClick={() => router.push('/')}
                 className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300"
               >
-                Volver al Inicio
+                🏠 Volver al Inicio
               </button>
             </div>
             
@@ -668,7 +878,7 @@ const RegistroRapidoClient: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Información Personal */}
+                {/* Información Personal - ACTUALIZADO: Nombres y apellidos separados */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
                     Información Personal
@@ -677,13 +887,13 @@ const RegistroRapidoClient: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label htmlFor="first_name" className={labelStyles}>
-                        Nombres <span className="text-red-600 font-bold">*</span>
+                        Primer Nombre <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         {...register('first_name')}
                         type="text"
                         id="first_name"
-                        placeholder="Luis Abelardo"
+                        placeholder="Luis"
                         className={`${inputStyles} ${errors.first_name ? inputErrorStyles : inputNormalStyles}`}
                       />
                       {errors.first_name && (
@@ -692,19 +902,51 @@ const RegistroRapidoClient: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <label htmlFor="second_name" className={labelStyles}>
+                        Segundo Nombre
+                      </label>
+                      <input
+                        {...register('second_name')}
+                        type="text"
+                        id="second_name"
+                        placeholder="Abelardo"
+                        className={`${inputStyles} ${inputNormalStyles}`}
+                      />
+                      <p className="text-xs text-gray-600 font-medium">
+                        Campo opcional
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
                       <label htmlFor="last_name" className={labelStyles}>
-                        Apellido <span className="text-red-600 font-bold">*</span>
+                        Primer Apellido <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         {...register('last_name')}
                         type="text"
                         id="last_name"
-                        placeholder="Vale Zurita"
+                        placeholder="Vale"
                         className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles}`}
                       />
                       {errors.last_name && (
                         <p className="text-sm text-red-700 font-semibold">{errors.last_name.message}</p>
                       )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="second_last_name" className={labelStyles}>
+                        Segundo Apellido
+                      </label>
+                      <input
+                        {...register('second_last_name')}
+                        type="text"
+                        id="second_last_name"
+                        placeholder="Zurita"
+                        className={`${inputStyles} ${inputNormalStyles}`}
+                      />
+                      <p className="text-xs text-gray-600 font-medium">
+                        Campo opcional
+                      </p>
                     </div>
                   </div>
 
@@ -842,7 +1084,7 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Club (sin federación) */}
+                {/* Club - ACTUALIZADO: Más opciones y club personalizado */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
                     Club
@@ -853,6 +1095,12 @@ const RegistroRapidoClient: React.FC = () => {
                     <select
                       {...register('club_name')}
                       id="club_name"
+                      onChange={(e) => {
+                        setShowCustomClub(e.target.value === 'custom');
+                        if (e.target.value !== 'custom') {
+                          setValue('custom_club_name', '');
+                        }
+                      }}
                       className={`${inputStyles} ${inputNormalStyles}`}
                     >
                       <option value="">Seleccionar club</option>
@@ -861,8 +1109,43 @@ const RegistroRapidoClient: React.FC = () => {
                           {club}
                         </option>
                       ))}
+                      <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                        🏓 ¿Tu club no está aquí? ¡Agrégalo!
+                      </option>
                     </select>
                   </div>
+
+                  {/* Campo personalizado para club */}
+                  {showCustomClub && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-4"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
+                        </svg>
+                        <h4 className="text-amber-800 font-bold text-sm">Club Personalizado</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-amber-800">
+                          Nombre del Club <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          {...register('custom_club_name')}
+                          type="text"
+                          placeholder="Ej: Club Deportivo Los Campeones"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-semibold placeholder-amber-600"
+                        />
+                        <p className="text-xs text-amber-700 font-medium">
+                          Ingresa el nombre completo de tu club
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Estilo de Juego */}
@@ -900,7 +1183,7 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Raqueta - Palo */}
+                {/* Raqueta - Palo - ACTUALIZADO: Modelos en dropdown */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
                     Raqueta - Palo
@@ -915,9 +1198,9 @@ const RegistroRapidoClient: React.FC = () => {
                         </svg>
                       </div>
                       <div>
-                        <h4 className="text-blue-900 font-bold text-sm">💡 ¿No encuentras tu marca?</h4>
+                        <h4 className="text-blue-900 font-bold text-sm">💡 ¿No encuentras tu marca o modelo?</h4>
                         <p className="text-blue-800 text-xs font-medium">
-                          Selecciona &quot;¿Tu marca no está aquí? ¡Agrégala!&quot; para ingresar cualquier marca personalizada
+                          Selecciona &quot;¿Tu marca no está aquí? ¡Agrégala!&quot; para ingresar cualquier marca o modelo personalizado
                         </p>
                       </div>
                     </div>
@@ -935,13 +1218,21 @@ const RegistroRapidoClient: React.FC = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="racket_model" className={labelStyles}>Modelo</label>
-                      <input
+                      <select
                         {...register('racket_model')}
-                        type="text"
                         id="racket_model"
-                        placeholder="5L carbono+"
                         className={`${inputStyles} ${inputNormalStyles}`}
-                      />
+                      >
+                        <option value="">Seleccionar modelo</option>
+                        {POPULAR_RACKET_MODELS.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Modelos populares de raquetas
+                      </p>
                     </div>
 
                     <CustomBrandFields
@@ -958,7 +1249,7 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Caucho del Drive */}
+                {/* Caucho del Drive - ACTUALIZADO: Modelos en dropdown y más hardness */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
                     Caucho del Drive
@@ -976,13 +1267,21 @@ const RegistroRapidoClient: React.FC = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="drive_rubber_model" className={labelStyles}>Modelo</label>
-                      <input
+                      <select
                         {...register('drive_rubber_model')}
-                        type="text"
                         id="drive_rubber_model"
-                        placeholder="Cross 729"
                         className={`${inputStyles} ${inputNormalStyles}`}
-                      />
+                      >
+                        <option value="">Seleccionar modelo</option>
+                        {POPULAR_DRIVE_MODELS.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Modelos populares para drive
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -1047,6 +1346,9 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Incluye N/A si no conoces la dureza
+                      </p>
                     </div>
 
                     <CustomBrandFields
@@ -1063,7 +1365,7 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Caucho del Back */}
+                {/* Caucho del Back - ACTUALIZADO: Modelos en dropdown */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
                     Caucho del Back
@@ -1081,13 +1383,21 @@ const RegistroRapidoClient: React.FC = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="backhand_rubber_model" className={labelStyles}>Modelo</label>
-                      <input
+                      <select
                         {...register('backhand_rubber_model')}
-                        type="text"
                         id="backhand_rubber_model"
-                        placeholder="Cross 729"
                         className={`${inputStyles} ${inputNormalStyles}`}
-                      />
+                      >
+                        <option value="">Seleccionar modelo</option>
+                        {POPULAR_BACKHAND_MODELS.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Modelos populares para backhand
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -1152,6 +1462,9 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Incluye N/A si no conoces la dureza
+                      </p>
                     </div>
 
                     <CustomBrandFields

@@ -7,7 +7,6 @@ import {
   UsersIcon, 
   BuildingOfficeIcon, 
   TrophyIcon,
-  PlusIcon,
   BellIcon,
   PaperAirplaneIcon,
   CogIcon,
@@ -355,7 +354,7 @@ export default function LigaDashboardPage() {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link 
               href="/dashboard/liga/clubs"
               className="flex items-center p-6 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
@@ -392,19 +391,6 @@ export default function LigaDashboardPage() {
               <div className="ml-4">
                 <p className="font-semibold text-gray-900">Configurar Deportes</p>
                 <p className="text-sm text-gray-500">Parámetros y reglas</p>
-              </div>
-            </Link>
-
-            <Link 
-              href="/dashboard/liga/send-invitations"
-              className="flex items-center p-6 border-2 border-gray-200 rounded-xl hover:border-yellow-300 hover:bg-yellow-50 transition-all duration-200 group"
-            >
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors">
-                <PaperAirplaneIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="font-semibold text-gray-900">Invitar Clubes</p>
-                <p className="text-sm text-gray-500">Enviar invitaciones</p>
               </div>
             </Link>
           </div>
@@ -457,17 +443,8 @@ export default function LigaDashboardPage() {
                   <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No hay clubes afiliados</h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Los clubes aparecerán aquí cuando se afilien a tu liga.
+                    Los clubes aparecerán aquí cuando se afilien a tu liga a través del proceso de registro y pago.
                   </p>
-                  <div className="mt-6">
-                    <Link 
-                      href="/dashboard/liga/send-invitations"
-                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
-                    >
-                      <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                      Invitar Clubes
-                    </Link>
-                  </div>
                 </div>
               )}
             </div>

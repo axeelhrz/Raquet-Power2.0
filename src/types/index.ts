@@ -60,9 +60,6 @@ export interface Club {
   description?: string;
   founded_date?: string;
   
-  // Club statistics
-  can_create_tournaments?: boolean;
-  
   // Representative information
   representative_name?: string;
   representative_phone?: string;
@@ -294,9 +291,6 @@ export interface ClubForm {
   google_maps_url?: string;
   description?: string;
   founded_date?: string;
-  
-  // Club statistics
-  can_create_tournaments?: boolean;
   
   // Representative information
   representative_name?: string;

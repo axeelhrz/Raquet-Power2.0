@@ -19,7 +19,9 @@ import {
   XCircleIcon,
   UserIcon,
   MapPinIcon,
-  TrophyIcon
+  TrophyIcon,
+  InformationCircleIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline';
 import { Member, Club } from '@/types';
 import MemberModal from '@/components/members/MemberModal';
@@ -81,6 +83,7 @@ export default function ClubMembersPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -450,6 +453,9 @@ export default function ClubMembersPage() {
     }
   };
 
+  // Check if current user can add members (only super_admin can)
+  const canAddMembers = user?.role === 'super_admin';
+
   if (loading) {
     return (
       <ClubLayout>
@@ -485,15 +491,60 @@ export default function ClubMembersPage() {
                 {currentClub ? `${currentClub.city} • ${currentClub.league?.name || 'Liga no asignada'}` : 'Administra los miembros del sistema'}
               </p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
-            >
-              <PlusIcon className="h-5 w-5" />
-              <span>Nuevo Miembro</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              {canAddMembers ? (
+                <button
+                  onClick={openCreateModal}
+                  className="bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  <span>Nuevo Miembro</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowPaymentInfo(true)}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                >
+                  <CreditCardIcon className="h-5 w-5" />
+                  <span>¿Cómo agregar miembros?</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Payment Information Banner for Club Users */}
+        {!canAddMembers && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <InformationCircleIcon className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Proceso de Registro de Nuevos Miembros
+                </h3>
+                <p className="text-blue-800 mb-3">
+                  Los nuevos miembros deben registrarse y realizar el pago correspondiente antes de ser agregados al club. 
+                  Como administrador del club, puedes visualizar y gestionar los miembros existentes, pero no agregar nuevos directamente.
+                </p>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setShowPaymentInfo(true)}
+                    className="text-blue-700 hover:text-blue-900 font-medium underline"
+                  >
+                    Ver proceso completo
+                  </button>
+                  <span className="text-blue-600">•</span>
+                  <a
+                    href="/registro-rapido"
+                    className="text-blue-700 hover:text-blue-900 font-medium underline"
+                  >
+                    Ir al registro rápido
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Club Info Banner */}
         {currentClub && (
@@ -630,17 +681,29 @@ export default function ClubMembersPage() {
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm || statusFilter !== 'all' || genderFilter !== 'all'
                   ? 'Intenta ajustar los filtros de búsqueda.'
-                  : 'Comienza agregando el primer miembro del club.'}
+                  : canAddMembers 
+                    ? 'Comienza agregando el primer miembro del club.'
+                    : 'Los nuevos miembros deben registrarse y pagar antes de aparecer aquí.'}
               </p>
               {(!searchTerm && statusFilter === 'all' && genderFilter === 'all') && (
                 <div className="mt-6">
-                  <button
-                    onClick={openCreateModal}
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                    Agregar Miembro
-                  </button>
+                  {canAddMembers ? (
+                    <button
+                      onClick={openCreateModal}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                      Agregar Miembro
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowPaymentInfo(true)}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <InformationCircleIcon className="-ml-1 mr-2 h-5 w-5" />
+                      Ver proceso de registro
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -750,13 +813,15 @@ export default function ClubMembersPage() {
                             >
                               <PencilIcon className="h-4 w-4" />
                             </button>
-                            <button
-                              onClick={() => openDeleteModal(member)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition-colors duration-150"
-                              title="Eliminar miembro"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
+                            {canAddMembers && (
+                              <button
+                                onClick={() => openDeleteModal(member)}
+                                className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition-colors duration-150"
+                                title="Eliminar miembro"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -768,13 +833,18 @@ export default function ClubMembersPage() {
           )}
         </div>
       </div>
-      <MemberModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateMember}
-        clubs={clubs}
-        member={null}
-      />
+
+      {/* Modals */}
+      {canAddMembers && (
+        <MemberModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateMember}
+          clubs={clubs}
+          member={null}
+        />
+      )}
+      
       <MemberModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
@@ -782,13 +852,136 @@ export default function ClubMembersPage() {
         clubs={clubs}
         member={selectedMember}
       />
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteMember}
-        title="Eliminar Miembro"
-        message={`¿Estás seguro de que deseas eliminar a ${getMemberDisplayName(selectedMember as NormalizedMember)}? Esta acción no se puede deshacer.`}
-      />
+      
+      {canAddMembers && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteMember}
+          title="Eliminar Miembro"
+          message={`¿Estás seguro de que deseas eliminar a ${getMemberDisplayName(selectedMember as NormalizedMember)}? Esta acción no se puede deshacer.`}
+        />
+      )}
+
+      {/* Payment Information Modal */}
+      {showPaymentInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Proceso de Registro de Miembros</h2>
+                  <p className="text-blue-100 mt-1">Información para administradores de club</p>
+                </div>
+                <button
+                  onClick={() => setShowPaymentInfo(false)}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <InformationCircleIcon className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-yellow-900 mb-2">Importante</h3>
+                      <p className="text-yellow-800">
+                        Como administrador de club, no puedes agregar miembros directamente. 
+                        Los nuevos miembros deben completar el proceso de registro y pago antes de aparecer en tu lista.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Pasos para que un nuevo miembro se una:</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-4">
+                      <div className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        1
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Registro Rápido</h4>
+                        <p className="text-gray-600">
+                          El interesado debe completar el formulario de registro rápido con sus datos personales y deportivos.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        2
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Proceso de Pago</h4>
+                        <p className="text-gray-600">
+                          Una vez registrado, debe realizar el pago correspondiente según las tarifas establecidas por la liga.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        3
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Verificación y Aprobación</h4>
+                        <p className="text-gray-600">
+                          Los administradores de la liga verifican el pago y aprueban el registro del nuevo miembro.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="bg-green-100 text-green-600 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        4
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Miembro Activo</h4>
+                        <p className="text-gray-600">
+                          Una vez aprobado, el miembro aparecerá automáticamente en tu lista de miembros del club.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-900 mb-2">¿Qué puedes hacer como administrador de club?</h4>
+                  <ul className="text-green-800 space-y-1">
+                    <li>• Visualizar todos los miembros de tu club</li>
+                    <li>• Editar la información de miembros existentes</li>
+                    <li>• Ver estadísticas y reportes de membresía</li>
+                    <li>• Gestionar el estado de los miembros (activo/inactivo)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t">
+              <a
+                href="/registro-rapido"
+                className="text-blue-600 hover:text-blue-800 font-medium underline"
+              >
+                Ir al formulario de registro rápido
+              </a>
+              <button
+                onClick={() => setShowPaymentInfo(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ClubLayout>
   );
 }

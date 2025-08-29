@@ -35,13 +35,42 @@ export default function Layout({ children }: LayoutProps) {
     return <>{children}</>;
   }
 
-  const navigation = [
-    { name: 'Panel de Control', href: '/dashboard', current: pathname === '/dashboard' },
-    { name: 'Ligas', href: '/leagues', current: pathname.startsWith('/leagues') },
-    { name: 'Clubes', href: '/clubs', current: pathname.startsWith('/clubs') },
-    { name: 'Miembros', href: '/members', current: pathname.startsWith('/members') },
-    { name: 'Deportes', href: '/sports', current: pathname.startsWith('/sports') },
-  ];
+  // Role-based navigation
+  const getNavigationForRole = () => {
+    const baseNavigation = [
+      { name: 'Panel de Control', href: '/dashboard', current: pathname === '/dashboard' },
+    ];
+
+    // Add role-specific navigation items
+    switch (user.role) {
+      case 'super_admin':
+        return [
+          ...baseNavigation,
+          { name: 'Ligas', href: '/leagues', current: pathname.startsWith('/leagues') },
+          { name: 'Clubes', href: '/clubs', current: pathname.startsWith('/clubs') },
+          { name: 'Miembros', href: '/members', current: pathname.startsWith('/members') },
+          { name: 'Deportes', href: '/sports', current: pathname.startsWith('/sports') },
+        ];
+      case 'liga':
+        return [
+          ...baseNavigation,
+          { name: 'Clubes', href: '/clubs', current: pathname.startsWith('/clubs') },
+          { name: 'Miembros', href: '/members', current: pathname.startsWith('/members') },
+          { name: 'Deportes', href: '/sports', current: pathname.startsWith('/sports') },
+        ];
+      case 'club':
+        return [
+          ...baseNavigation,
+          { name: 'Miembros', href: '/members', current: pathname.startsWith('/members') },
+        ];
+      case 'miembro':
+        return baseNavigation; // Only dashboard for members
+      default:
+        return baseNavigation;
+    }
+  };
+
+  const navigation = getNavigationForRole();
 
   return (
     <div className="min-h-screen bg-gray-50">
