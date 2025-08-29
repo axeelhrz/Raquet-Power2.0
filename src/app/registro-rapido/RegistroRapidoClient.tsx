@@ -764,7 +764,7 @@ const RegistroRapidoClient: React.FC = () => {
                 Ir a Sala de Espera
               </button>
               <button
-                onClick={() => router.push('/')}
+                onClick={() => window.location.href = 'https://raquet-power2-0.vercel.app/registro-rapido'}
                 className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300"
               >
                 🏠 Volver al Inicio
