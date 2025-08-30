@@ -57,6 +57,7 @@ const registroRapidoSchema = z.object({
   drive_rubber_hardness: z.string().optional(),
   drive_rubber_custom_brand: z.string().optional(),
   drive_rubber_custom_model: z.string().optional(),
+  drive_rubber_custom_hardness: z.string().optional(),
   
   // Caucho del back
   backhand_rubber_brand: z.string().optional(),
@@ -67,6 +68,7 @@ const registroRapidoSchema = z.object({
   backhand_rubber_hardness: z.string().optional(),
   backhand_rubber_custom_brand: z.string().optional(),
   backhand_rubber_custom_model: z.string().optional(),
+  backhand_rubber_custom_hardness: z.string().optional(),
   
   // Información adicional
   notes: z.string().optional(),
@@ -507,6 +509,8 @@ const RegistroRapidoClient: React.FC = () => {
   const [showCustomDriveRubber, setShowCustomDriveRubber] = useState(false);
   const [showCustomBackhandRubber, setShowCustomBackhandRubber] = useState(false);
   const [showCustomClub, setShowCustomClub] = useState(false);
+  const [showCustomDriveHardness, setShowCustomDriveHardness] = useState(false);
+  const [showCustomBackhandHardness, setShowCustomBackhandHardness] = useState(false);
   const router = useRouter();
 
   const {
@@ -1337,6 +1341,13 @@ const RegistroRapidoClient: React.FC = () => {
                       <select
                         {...register('drive_rubber_hardness')}
                         id="drive_rubber_hardness"
+                        onChange={(e) => {
+                          const isCustom = e.target.value === 'custom';
+                          setShowCustomDriveHardness(isCustom);
+                          if (!isCustom) {
+                            setValue('drive_rubber_custom_hardness', '');
+                          }
+                        }}
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar hardness</option>
@@ -1345,11 +1356,46 @@ const RegistroRapidoClient: React.FC = () => {
                             {hardness}
                           </option>
                         ))}
+                        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                          ✏️ ¿Tu hardness no está aquí? ¡Escríbelo!
+                        </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
                         Incluye N/A si no conoces la dureza
                       </p>
                     </div>
+
+                    {/* Campo personalizado para hardness del drive */}
+                    {showCustomDriveHardness && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="col-span-full bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4"
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          <h4 className="text-purple-800 font-bold text-sm">Hardness Personalizado - Drive</h4>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-bold text-purple-800">
+                            Hardness del Drive <span className="text-red-600">*</span>
+                          </label>
+                          <input
+                            {...register('drive_rubber_custom_hardness')}
+                            type="text"
+                            placeholder="Ej: h41, Medium-Soft, 38°, etc."
+                            className="w-full px-4 py-3 rounded-xl border-2 border-purple-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 hover:border-purple-500 text-gray-900 font-semibold placeholder-purple-600"
+                          />
+                          <p className="text-xs text-purple-700 font-medium">
+                            💡 Escribe cualquier valor de hardness: h35-h55, grados (°), descriptivos (Soft, Medium, Hard), etc.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
 
                     <CustomBrandFields
                       show={showCustomDriveRubber}
@@ -1453,6 +1499,13 @@ const RegistroRapidoClient: React.FC = () => {
                       <select
                         {...register('backhand_rubber_hardness')}
                         id="backhand_rubber_hardness"
+                        onChange={(e) => {
+                          const isCustom = e.target.value === 'custom';
+                          setShowCustomBackhandHardness(isCustom);
+                          if (!isCustom) {
+                            setValue('backhand_rubber_custom_hardness', '');
+                          }
+                        }}
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar hardness</option>
@@ -1466,6 +1519,38 @@ const RegistroRapidoClient: React.FC = () => {
                         Incluye N/A si no conoces la dureza
                       </p>
                     </div>
+
+                    {/* Campo personalizado para hardness del back */}
+                    {showCustomBackhandHardness && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="col-span-full bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4"
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <h4 className="text-purple-800 font-bold text-sm">Hardness Personalizado - Back</h4>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-bold text-purple-800">
+                            Hardness del Back <span className="text-red-600">*</span>
+                          </label>
+                          <input
+                            {...register('backhand_rubber_custom_hardness')}
+                            type="text"
+                            placeholder="Ej: h41, Medium-Soft, 38°, etc."
+                            className="w-full px-4 py-3 rounded-xl border-2 border-purple-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 hover:border-purple-500 text-gray-900 font-semibold placeholder-purple-600"
+                          />
+                          <p className="text-xs text-purple-700 font-medium">
+                            💡 Escribe cualquier valor de hardness: h35-h55, grados (°), descriptivos (Soft, Medium, Hard), etc.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
 
                     <CustomBrandFields
                       show={showCustomBackhandRubber}
@@ -1521,7 +1606,6 @@ const RegistroRapidoClient: React.FC = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Registrando...
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2">
