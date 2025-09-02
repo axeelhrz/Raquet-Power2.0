@@ -9,20 +9,19 @@ import { CssBaseline } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
 import { motion, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import axios, { isAxiosError } from 'axios';
 import authTheme from '@/theme/authTheme';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthHeader from '@/components/auth/AuthHeader';
-import CustomBrandHelper from '@/components/ui/CustomBrandHelper';
-import axios from '@/lib/axios';
-import { isAxiosError } from 'axios';
-import { testApiConnection, testRegistroRapido } from '@/utils/testApiConnection';
+import CustomFieldValidator from '@/components/ui/CustomFieldValidator';
+import { validateCustomField, debounce, type FieldType, type ValidationResult } from '@/utils/customFieldValidation';
 
 const registroRapidoSchema = z.object({
   // Información personal básica - ACTUALIZADO: nombres y apellidos separados
   first_name: z.string().min(2, 'El primer nombre debe tener al menos 2 caracteres'),
   second_name: z.string().optional(),
   last_name: z.string().min(2, 'El primer apellido debe tener al menos 2 caracteres'),
-  second_last_name: z.string().optional(),
+  second_last_name: z.string().min(2, 'El segundo apellido debe tener al menos 2 caracteres'),
   doc_id: z.string().optional(),
   email: z.string().email('Por favor ingresa un email válido'),
   phone: z.string().min(10, 'El teléfono debe tener al menos 10 dígitos'),
@@ -34,9 +33,15 @@ const registroRapidoSchema = z.object({
   province: z.string().min(1, 'Por favor selecciona una provincia'),
   city: z.string().min(1, 'Por favor selecciona una ciudad'),
   
+  // Liga - NUEVO CAMPO
+  league: z.string().optional(),
+  
   // Club (sin federación)
   club_name: z.string().optional(),
   custom_club_name: z.string().optional(),
+  
+  // Ranking - NUEVO CAMPO
+  ranking: z.string().optional(),
   
   // Estilo de juego
   playing_side: z.enum(['derecho', 'zurdo']).optional(),
@@ -45,8 +50,8 @@ const registroRapidoSchema = z.object({
   // Raqueta - palo
   racket_brand: z.string().optional(),
   racket_model: z.string().optional(),
-  racket_custom_brand: z.string().optional(),
-  racket_custom_model: z.string().optional(),
+  custom_racket_brand: z.string().optional(),
+  custom_racket_model: z.string().optional(),
   
   // Caucho del drive
   drive_rubber_brand: z.string().optional(),
@@ -55,9 +60,9 @@ const registroRapidoSchema = z.object({
   drive_rubber_color: z.enum(['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia']).optional(),
   drive_rubber_sponge: z.string().optional(),
   drive_rubber_hardness: z.string().optional(),
-  drive_rubber_custom_brand: z.string().optional(),
-  drive_rubber_custom_model: z.string().optional(),
-  drive_rubber_custom_hardness: z.string().optional(),
+  custom_drive_rubber_brand: z.string().optional(),
+  custom_drive_rubber_model: z.string().optional(),
+  custom_drive_rubber_hardness: z.string().optional(),
   
   // Caucho del back
   backhand_rubber_brand: z.string().optional(),
@@ -66,9 +71,9 @@ const registroRapidoSchema = z.object({
   backhand_rubber_color: z.enum(['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia']).optional(),
   backhand_rubber_sponge: z.string().optional(),
   backhand_rubber_hardness: z.string().optional(),
-  backhand_rubber_custom_brand: z.string().optional(),
-  backhand_rubber_custom_model: z.string().optional(),
-  backhand_rubber_custom_hardness: z.string().optional(),
+  custom_backhand_rubber_brand: z.string().optional(),
+  custom_backhand_rubber_model: z.string().optional(),
+  custom_backhand_rubber_hardness: z.string().optional(),
   
   // Información adicional
   notes: z.string().optional(),
@@ -87,416 +92,273 @@ type RegistrationData = {
 // ACTUALIZADO: Más ciudades por provincia
 const ECUADOR_PROVINCES = [
   { 
-    name: 'Guayas', 
-    cities: [
-      'Guayaquil', 'Milagro', 'Buena Fe', 'Daule', 'Durán', 'Samborondón', 
-      'Playas', 'El Triunfo', 'Yaguachi', 'Balao', 'Naranjal', 'Balzar',
-      'Colimes', 'Palestina', 'Pedro Carbo', 'Santa Lucía', 'Salitre',
-      'Isidro Ayora', 'Lomas de Sargentillo', 'Nobol', 'Marcelino Maridueña',
-      'Alfredo Baquerizo Moreno', 'Simón Bolívar', 'Coronel Marcelino Maridueña'
-    ] 
-  },
-  { 
-    name: 'Pichincha', 
-    cities: [
-      'Quito', 'Cayambe', 'Mejía', 'Pedro Moncayo', 'Rumiñahui', 'San Miguel de los Bancos',
-      'Puerto Quito', 'Pedro Vicente Maldonado', 'Machachi', 'Sangolquí', 'Tabacundo',
-      'El Quinche', 'Conocoto', 'Tumbaco', 'Cumbayá', 'Calderón', 'Pomasqui',
-      'San Antonio de Pichincha', 'Alangasí', 'Amaguaña', 'Cutuglahua'
-    ] 
-  },
-  { 
-    name: 'Manabí', 
-    cities: [
-      'Manta', 'Portoviejo', 'Chone', 'Montecristi', 'Jipijapa', 'Bahía de Caráquez',
-      'El Carmen', 'Flavio Alfaro', 'Calceta', 'Tosagua', 'Rocafuerte', 'Santa Ana',
-      'Sucre', 'Bolívar', 'Junín', 'Paján', 'Pichincha', 'Olmedo', 'Puerto López',
-      'Jama', 'Pedernales', 'San Vicente', 'Jaramijó', 'Crucita', '24 de Mayo'
-    ] 
-  },
-  { 
     name: 'Azuay', 
     cities: [
-      'Cuenca', 'Gualaceo', 'Paute', 'Santa Isabel', 'Sigsig', 'Chordeleg',
-      'El Pan', 'Guachapala', 'Girón', 'San Fernando', 'Nabón', 'Oña',
-      'Pucará', 'Camilo Ponce Enríquez', 'Sevilla de Oro'
-    ] 
-  },
-  { 
-    name: 'Tungurahua', 
-    cities: [
-      'Ambato', 'Baños', 'Cevallos', 'Mocha', 'Patate', 'Pelileo', 'Píllaro',
-      'Quero', 'Tisaleo', 'Huachi Grande', 'Salasaca', 'Quisapincha'
-    ] 
-  },
-  { 
-    name: 'Los Ríos', 
-    cities: [
-      'Quevedo', 'Babahoyo', 'Ventanas', 'Vinces', 'Urdaneta', 'Baba', 'Buena Fe',
-      'Mocache', 'Palenque', 'Pueblo Viejo', 'Ricaurte', 'Valencia', 'Montalvo'
-    ] 
-  },
-  { 
-    name: 'Santa Elena', 
-    cities: ['La Libertad', 'Salinas', 'Santa Elena', 'Manglaralto', 'Colonche', 'Chanduy'] 
-  },
-  { 
-    name: 'Galápagos', 
-    cities: ['Puerto Ayora', 'Puerto Baquerizo Moreno', 'Puerto Villamil', 'Bellavista'] 
-  },
-  { 
-    name: 'El Oro', 
-    cities: [
-      'Machala', 'Pasaje', 'Santa Rosa', 'Huaquillas', 'Arenillas', 'Atahualpa',
-      'Balsas', 'Chilla', 'El Guabo', 'Las Lajas', 'Marcabelí', 'Piñas',
-      'Portovelo', 'Zaruma'
-    ] 
-  },
-  { 
-    name: 'Esmeraldas', 
-    cities: [
-      'Esmeraldas', 'Atacames', 'Muisne', 'Quinindé', 'San Lorenzo', 'Rioverde',
-      'La Tola', 'Eloy Alfaro', 'Tonsupa', 'Súa', 'Same', 'Tonchigüe'
-    ] 
-  },
-  { 
-    name: 'Imbabura', 
-    cities: [
-      'Ibarra', 'Otavalo', 'Cotacachi', 'Antonio Ante', 'Pimampiro', 'Urcuquí',
-      'Atuntaqui', 'Ilumán', 'Natabuela', 'San Pablo del Lago'
-    ] 
-  },
-  { 
-    name: 'Loja', 
-    cities: [
-      'Loja', 'Catamayo', 'Cariamanga', 'Macará', 'Catacocha', 'Alamor',
-      'Célica', 'Pindal', 'Puyango', 'Saraguro', 'Sozoranga', 'Zapotillo',
-      'Gonzanamá', 'Quilanga', 'Calvas', 'Espíndola'
-    ] 
-  },
-  { 
-    name: 'Cañar', 
-    cities: ['Azogues', 'Cañar', 'La Troncal', 'El Tambo', 'Déleg', 'Suscal', 'Biblián'] 
-  },
-  { 
-    name: 'Chimborazo', 
-    cities: [
-      'Riobamba', 'Alausí', 'Colta', 'Chambo', 'Chunchi', 'Guamote',
-      'Guano', 'Pallatanga', 'Penipe', 'Cumandá'
+      'Camilo Ponce Enríquez', 'Chordeleg', 'Cuenca', 'El Pan', 'Girón', 'Gualaceo', 
+      'Guachapala', 'Nabón', 'Oña', 'Paute', 'Pucará', 'San Fernando', 'Santa Isabel', 
+      'Sevilla de Oro', 'Sigsig'
     ] 
   },
   { 
     name: 'Bolívar', 
     cities: [
-      'Guaranda', 'Chillanes', 'Chimbo', 'Echeandía', 'Las Naves',
-      'Caluma', 'San Miguel'
+      'Caluma', 'Chillanes', 'Chimbo', 'Echeandía', 'Guaranda', 'Las Naves', 'San Miguel'
     ] 
   },
   { 
+    name: 'Cañar', 
+    cities: ['Azogues', 'Biblián', 'Cañar', 'Déleg', 'El Tambo', 'La Troncal', 'Suscal'] 
+  },
+  { 
     name: 'Carchi', 
-    cities: ['Tulcán', 'Bolívar', 'Espejo', 'Mira', 'Montúfar', 'San Pedro de Huaca'] 
+    cities: ['Bolívar', 'Espejo', 'Mira', 'Montúfar', 'San Pedro de Huaca', 'Tulcán'] 
+  },
+  { 
+    name: 'Chimborazo', 
+    cities: [
+      'Alausí', 'Chambo', 'Chunchi', 'Colta', 'Cumandá', 'Guamote', 'Guano', 
+      'Pallatanga', 'Penipe', 'Riobamba'
+    ] 
   },
   { 
     name: 'Cotopaxi', 
     cities: [
-      'Latacunga', 'La Maná', 'Pangua', 'Pujilí', 'Salcedo', 'Saquisilí',
-      'Sigchos'
+      'La Maná', 'Latacunga', 'Pangua', 'Pujilí', 'Salcedo', 'Saquisilí', 'Sigchos'
     ] 
   },
   { 
-    name: 'Napo', 
-    cities: ['Tena', 'Archidona', 'El Chaco', 'Quijos', 'Carlos Julio Arosemena Tola'] 
+    name: 'El Oro', 
+    cities: [
+      'Arenillas', 'Atahualpa', 'Balsas', 'Chilla', 'El Guabo', 'Huaquillas', 
+      'Las Lajas', 'Machala', 'Marcabelí', 'Pasaje', 'Piñas', 'Portovelo', 
+      'Santa Rosa', 'Zaruma'
+    ] 
   },
   { 
-    name: 'Pastaza', 
-    cities: ['Puyo', 'Arajuno', 'Mera', 'Santa Clara'] 
+    name: 'Esmeraldas', 
+    cities: [
+      'Atacames', 'Eloy Alfaro', 'Esmeraldas', 'La Tola', 'Muisne', 'Quinindé', 
+      'Rioverde', 'Same', 'San Lorenzo', 'Súa', 'Tonsupa', 'Tonchigüe'
+    ] 
+  },
+  { 
+    name: 'Galápagos', 
+    cities: ['Bellavista', 'Puerto Ayora', 'Puerto Baquerizo Moreno', 'Puerto Villamil'] 
+  },
+  { 
+    name: 'Guayas', 
+    cities: [
+      'Alfredo Baquerizo Moreno', 'Balao', 'Balzar', 'Buena Fe', 'Colimes', 
+      'Coronel Marcelino Maridueña', 'Daule', 'Durán', 'El Triunfo', 'Guayaquil', 
+      'Isidro Ayora', 'Lomas de Sargentillo', 'Marcelino Maridueña', 'Milagro', 
+      'Naranjal', 'Nobol', 'Palestina', 'Pedro Carbo', 'Playas', 'Salitre', 
+      'Samborondón', 'Santa Lucía', 'Simón Bolívar', 'Yaguachi'
+    ] 
+  },
+  { 
+    name: 'Imbabura', 
+    cities: [
+      'Antonio Ante', 'Atuntaqui', 'Cotacachi', 'Ibarra', 'Ilumán', 'Natabuela', 
+      'Otavalo', 'Pimampiro', 'San Pablo del Lago', 'Urcuquí'
+    ] 
+  },
+  { 
+    name: 'Loja', 
+    cities: [
+      'Alamor', 'Calvas', 'Cariamanga', 'Catacocha', 'Catamayo', 'Célica', 
+      'Espíndola', 'Gonzanamá', 'Loja', 'Macará', 'Pindal', 'Puyango', 
+      'Quilanga', 'Saraguro', 'Sozoranga', 'Zapotillo'
+    ] 
+  },
+  { 
+    name: 'Los Ríos', 
+    cities: [
+      'Baba', 'Babahoyo', 'Buena Fe', 'Mocache', 'Montalvo', 'Palenque', 
+      'Pueblo Viejo', 'Quevedo', 'Ricaurte', 'Urdaneta', 'Valencia', 'Vinces'
+    ] 
+  },
+  { 
+    name: 'Manabí', 
+    cities: [
+      '24 de Mayo', 'Bahía de Caráquez', 'Bolívar', 'Calceta', 'Chone', 'Crucita', 
+      'El Carmen', 'Flavio Alfaro', 'Jama', 'Jaramijó', 'Jipijapa', 'Junín', 
+      'Manta', 'Montecristi', 'Olmedo', 'Paján', 'Pedernales', 'Pichincha', 
+      'Portoviejo', 'Puerto López', 'Rocafuerte', 'San Vicente', 'Santa Ana', 
+      'Sucre', 'Tosagua'
+    ] 
   },
   { 
     name: 'Morona Santiago', 
     cities: [
-      'Macas', 'Gualaquiza', 'Limón Indanza', 'Palora', 'Santiago', 'Sucúa',
-      'Huamboya', 'San Juan Bosco', 'Taisha', 'Logroño', 'Pablo Sexto', 'Tiwintza'
+      'Gualaquiza', 'Huamboya', 'Limón Indanza', 'Logroño', 'Macas', 'Pablo Sexto', 
+      'Palora', 'San Juan Bosco', 'Santiago', 'Sucúa', 'Taisha', 'Tiwintza'
+    ] 
+  },
+  { 
+    name: 'Napo', 
+    cities: ['Archidona', 'Carlos Julio Arosemena Tola', 'El Chaco', 'Quijos', 'Tena'] 
+  },
+  { 
+    name: 'Orellana', 
+    cities: ['Aguarico', 'Francisco de Orellana', 'La Joya de los Sachas', 'Loreto'] 
+  },
+  { 
+    name: 'Pastaza', 
+    cities: ['Arajuno', 'Mera', 'Puyo', 'Santa Clara'] 
+  },
+  { 
+    name: 'Pichincha', 
+    cities: [
+      'Alangasí', 'Amaguaña', 'Calderón', 'Cayambe', 'Conocoto', 'Cumbayá', 
+      'Cutuglahua', 'El Quinche', 'Machachi', 'Mejía', 'Pedro Moncayo', 
+      'Pedro Vicente Maldonado', 'Pomasqui', 'Puerto Quito', 'Quito', 'Rumiñahui', 
+      'San Antonio de Pichincha', 'San Miguel de los Bancos', 'Sangolquí', 
+      'Tabacundo', 'Tumbaco'
+    ] 
+  },
+  { 
+    name: 'Santa Elena', 
+    cities: ['Chanduy', 'Colonche', 'La Libertad', 'Manglaralto', 'Salinas', 'Santa Elena'] 
+  },
+  { 
+    name: 'Santo Domingo', 
+    cities: ['La Concordia', 'Santo Domingo'] 
+  },
+  { 
+    name: 'Sucumbíos', 
+    cities: [
+      'Cascales', 'Cuyabeno', 'Gonzalo Pizarro', 'Nueva Loja', 'Putumayo', 
+      'Shushufindi', 'Sucumbíos'
+    ] 
+  },
+  { 
+    name: 'Tungurahua', 
+    cities: [
+      'Ambato', 'Baños', 'Cevallos', 'Huachi Grande', 'Mocha', 'Patate', 'Pelileo', 
+      'Píllaro', 'Quero', 'Quisapincha', 'Salasaca', 'Tisaleo'
     ] 
   },
   { 
     name: 'Zamora Chinchipe', 
     cities: [
-      'Zamora', 'Chinchipe', 'Nangaritza', 'Yacuambi', 'Yantzaza', 'El Pangui',
-      'Centinela del Cóndor', 'Palanda', 'Paquisha'
+      'Centinela del Cóndor', 'Chinchipe', 'El Pangui', 'Nangaritza', 'Palanda', 
+      'Paquisha', 'Yacuambi', 'Yantzaza', 'Zamora'
     ] 
-  },
-  { 
-    name: 'Sucumbíos', 
-    cities: [
-      'Nueva Loja', 'Gonzalo Pizarro', 'Putumayo', 'Shushufindi', 'Sucumbíos',
-      'Cascales', 'Cuyabeno'
-    ] 
-  },
-  { 
-    name: 'Orellana', 
-    cities: ['Francisco de Orellana', 'Aguarico', 'La Joya de los Sachas', 'Loreto'] 
-  },
-  { 
-    name: 'Santo Domingo', 
-    cities: ['Santo Domingo', 'La Concordia'] 
   }
 ];
 
 // ACTUALIZADO: Más clubes
 const TT_CLUBS_ECUADOR = [
-  'PPH',
-  'Cuenca',
-  'Fede Guayas',
-  'Ping Pro',
-  'Billy Team',
-  'Independiente',
-  'BackSping',
-  'Spin Factor',
-  'Fede - Manabi',
-  'Spin Zone',
+  'Amazonas Ping Pong',
   'Ambato',
-  'TM - Manta',
-  'Primorac',
-  'Quito',
-  'TT Quevedo',
+  'Azuay TT',
+  'BackSping',
+  'Billy Team',
+  'Bolívar TT',
+  'Buena Fe',
+  'Cañar TT Club',
+  'Carchi Racket Club',
+  'Chimborazo Ping',
+  'Club Deportivo Loja',
+  'Costa TT Club',
+  'Cotopaxi TT',
+  'Cuenca',
+  'El Oro Table Tennis',
+  'Esmeraldas TT',
+  'Fede - Manabi',
+  'Fede Guayas',
   'Fede Santa Elena',
-  'Uartes',
   'Galapagos',
   'Guayaquil City',
-  'Buena Fe',
-  'Milagro',
-  'Ping Pong Rick',
-  'Club Deportivo Loja',
-  'Azuay TT',
-  'Manabí Spin',
-  'Los Ríos TT',
-  'Tungurahua Ping Pong',
-  'Esmeraldas TT',
   'Imbabura Racket',
-  'El Oro Table Tennis',
-  'Cañar TT Club',
-  'Chimborazo Ping',
-  'Bolívar TT',
-  'Carchi Racket Club',
-  'Cotopaxi TT',
+  'Independiente',
+  'Los Ríos TT',
+  'Manabí Spin',
   'Oriente TT',
-  'Amazonas Ping Pong',
-  'Costa TT Club',
+  'Ping Pong Rick',
+  'Ping Pro',
+  'PPH',
+  'Primorac',
+  'Quito',
+  'Selva TT',
   'Sierra Racket',
-  'Selva TT'
+  'Spin Factor',
+  'Spin Zone',
+  'TM - Manta',
+  'TT Quevedo',
+  'Tungurahua Ping Pong',
+  'Uartes'
 ];
 
 // Updated brands list with Hurricane and Yinhe
 const POPULAR_BRANDS = [
-  'Butterfly', 'DHS', 'Sanwei', 'Nittaku', 'Yasaka', 'Stiga', 
-  'Victas', 'Joola', 'Xiom', 'Saviga', 'Friendship', 'Dr. Neubauer', 
-  'Double Fish', 'Hurricane', 'Yinhe', 'Tibhar', 'Andro', 'Gewo',
-  'Donic', 'Cornilleau', 'Killerspin', 'Palio', 'TSP', 'Avalox'
+  'Andro', 'Avalox', 'Butterfly', 'Cornilleau', 'DHS', 'Donic', 'Double Fish', 
+  'Dr. Neubauer', 'Friendship', 'Gewo', 'Hurricane', 'Joola', 'Killerspin', 
+  'Nittaku', 'Palio', 'Sanwei', 'Saviga', 'Stiga', 'Tibhar', 'TSP', 
+  'Victas', 'Xiom', 'Yinhe', 'Yasaka'
 ];
 
 // ACTUALIZADO: Modelos populares de raquetas
 const POPULAR_RACKET_MODELS = [
-  'Timo Boll ALC', 'Zhang Jike Super ZLC', 'Viscaria', 'Innerforce Layer ALC',
-  'Ma Long Carbon', 'Harimoto ALC', 'Ovtcharov Innerforce ALC', 'Lin Gaoyuan ALC',
-  'Hurricane Long 5', 'Power G7', 'Ma Lin Extra Offensive', 'Kong Linghui',
-  'Primorac Carbon', 'Clipper Wood', 'Allround Classic', 'Offensive Classic',
-  'Evolution MX-P', 'Ligna CO', 'Stratus PowerWood', 'Quantum X Pro',
-  'Carbotec 7000', 'Defplay Senso', 'Waldner Offensive', 'Persson Powerplay'
+  'Allround Classic', 'Carbotec 7000', 'Clipper Wood', 'Defplay Senso', 
+  'Evolution MX-P', 'Harimoto ALC', 'Hurricane Long 5', 'Innerforce Layer ALC', 
+  'Kong Linghui', 'Ligna CO', 'Lin Gaoyuan ALC', 'Ma Lin Extra Offensive', 
+  'Ma Long Carbon', 'Offensive Classic', 'Ovtcharov Innerforce ALC', 
+  'Persson Powerplay', 'Power G7', 'Primorac Carbon', 'Quantum X Pro', 
+  'Stratus PowerWood', 'Timo Boll ALC', 'Viscaria', 'Waldner Offensive', 
+  'Zhang Jike Super ZLC'
 ];
 
 // ACTUALIZADO: Modelos populares de caucho drive
 const POPULAR_DRIVE_MODELS = [
-  'Tenergy 05', 'Tenergy 80', 'Tenergy 64', 'Hurricane 3', 'Hurricane 8',
-  'Evolution MX-P', 'Evolution MX-S', 'Hexer Powergrip', 'Hexer HD',
-  'Rakza 7', 'Rakza 9', 'Dignics 05', 'Dignics 09C', 'Rozena',
-  'V > 15 Extra', 'V > 20 Double Extra', 'Rhyzer 48', 'Rhyzer 50',
-  'Omega VII Pro', 'Omega VII Euro', 'Acuda Blue P1', 'Acuda Blue P3',
-  'Target Pro GT-H47', 'Target Pro GT-M43', 'Skyline 3', 'Big Dipper',
-  'Cross 729', 'Focus 3', 'Battle 2', 'Friendship 802-40'
+  'Acuda Blue P1', 'Acuda Blue P3', 'Battle 2', 'Big Dipper', 'Cross 729', 
+  'Dignics 05', 'Dignics 09C', 'Evolution MX-P', 'Evolution MX-S', 
+  'Focus 3', 'Friendship 802-40', 'Hexer HD', 'Hexer Powergrip', 
+  'Hurricane 3', 'Hurricane 8', 'Omega VII Euro', 'Omega VII Pro', 
+  'Rakza 7', 'Rakza 9', 'Rhyzer 48', 'Rhyzer 50', 'Rozena', 
+  'Skyline 3', 'Target Pro GT-H47', 'Target Pro GT-M43', 'Tenergy 05', 
+  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
 ];
 
 // ACTUALIZADO: Modelos populares de caucho back
 const POPULAR_BACKHAND_MODELS = [
-  'Tenergy 05', 'Tenergy 80', 'Tenergy 64', 'Hurricane 3 Neo',
-  'Evolution MX-P', 'Evolution EL-P', 'Hexer Powergrip', 'Hexer Pips+',
-  'Rakza 7 Soft', 'Rakza X', 'Dignics 05', 'Dignics 80', 'Rozena',
-  'V > 15 Extra', 'V > 20 Double Extra', 'Rhyzer 43', 'Rhyzer 48',
-  'Omega VII Pro', 'Omega VII Euro', 'Acuda Blue P2', 'Acuda Blue P1',
-  'Target Pro GT-S43', 'Target Pro GT-M40', 'Grass D.TecS', 'Plaxon 450',
-  'Cross 729-2', 'Focus Snipe', 'Battle 2 Back', 'Friendship 729 Super FX'
+  'Acuda Blue P1', 'Acuda Blue P2', 'Battle 2 Back', 'Cross 729-2', 
+  'Dignics 05', 'Dignics 80', 'Evolution EL-P', 'Evolution MX-P', 
+  'Focus Snipe', 'Friendship 729 Super FX', 'Grass D.TecS', 'Hexer Pips+', 
+  'Hexer Powergrip', 'Hurricane 3 Neo', 'Omega VII Euro', 'Omega VII Pro', 
+  'Plaxon 450', 'Rakza 7 Soft', 'Rakza X', 'Rhyzer 43', 'Rhyzer 48', 
+  'Rozena', 'Target Pro GT-M40', 'Target Pro GT-S43', 'Tenergy 05', 
+  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
 ];
 
-const RUBBER_COLORS = ['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia'];
+const RUBBER_COLORS = ['amarillo', 'azul', 'fucsia', 'morado', 'negro', 'rojo', 'verde'];
 
 // Updated rubber types with corrected name
 const RUBBER_TYPES = [
+  { value: 'antitopsping', label: 'Antitopsping' },
   { value: 'liso', label: 'Liso' },
-  { value: 'pupo_largo', label: 'Pupo Largo' },
   { value: 'pupo_corto', label: 'Pupo Corto' },
-  { value: 'antitopsping', label: 'Antitopsping' }
+  { value: 'pupo_largo', label: 'Pupo Largo' }
 ];
 
 // ACTUALIZADO: Más opciones de hardness incluyendo N/A
 const HARDNESS_LEVELS = [
-  'N/A', 'h35', 'h37', 'h39', 'h40', 'h42', 'h44', 'h46', 'h48', 'h50', 
-  'h52', 'h54', 'Soft', 'Medium', 'Hard', 'Extra Hard'
+  'Extra Hard', 'h35', 'h37', 'h39', 'h40', 'h42', 'h44', 'h46', 'h48', 'h50', 
+  'h52', 'h54', 'Hard', 'Medium', 'N/A', 'Soft'
 ];
 
 // Updated sponge thickness options as requested
 const SPONGE_THICKNESSES = ['0,5', '0,7', '1,5', '1,6', '1,8', '1,9', '2', '2,1', '2,2', 'sin esponja'];
 
-// Tipos fuertes para los campos de marcas/modelos
-type BrandFieldName = 'racket_brand' | 'drive_rubber_brand' | 'backhand_rubber_brand';
-type CustomBrandFieldName = 'racket_custom_brand' | 'drive_rubber_custom_brand' | 'backhand_rubber_custom_brand';
-type CustomModelFieldName = 'racket_custom_model' | 'drive_rubber_custom_model' | 'backhand_rubber_custom_model';
-
-// Componente para campos personalizados mejorado
-const CustomBrandFields: React.FC<{
-  show: boolean;
-  brandFieldName: CustomBrandFieldName;
-  modelFieldName: CustomModelFieldName;
-  register: UseFormRegister<RegistroRapidoFormValues>;
-  brandLabel?: string;
-  modelLabel?: string;
-  brandPlaceholder?: string;
-  modelPlaceholder?: string;
-  type?: 'racket' | 'rubber';
-}> = ({ 
-  show, 
-  brandFieldName, 
-  modelFieldName, 
-  register, 
-  brandLabel = "Marca Personalizada",
-  modelLabel = "Modelo Personalizado",
-  brandPlaceholder = "Ej: Tibhar, Andro, Gewo",
-  modelPlaceholder = "Ej: Evolution MX-P, Hexer",
-  type = 'rubber'
-}) => {
-  if (!show) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.3 }}
-      className="col-span-full"
-    >
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-4 space-y-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <h4 className="text-amber-800 font-bold text-sm">Marca Personalizada</h4>
-          </div>
-          <CustomBrandHelper type={type} />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-amber-800">
-              {brandLabel} <span className="text-red-600">*</span>
-            </label>
-            <input
-              {...register(brandFieldName)}
-              type="text"
-              placeholder={brandPlaceholder}
-              className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-semibold placeholder-amber-600"
-            />
-            <p className="text-xs text-amber-700 font-medium">
-              Ingresa cualquier marca que no esté en la lista
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-amber-800">
-              {modelLabel}
-            </label>
-            <input
-              {...register(modelFieldName)}
-              type="text"
-              placeholder={modelPlaceholder}
-              className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-semibold placeholder-amber-600"
-            />
-            <p className="text-xs text-amber-700 font-medium">
-              Modelo específico (opcional)
-            </p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Componente mejorado para selectores de marca
-const BrandSelector: React.FC<{
-  label: string;
-  fieldName: BrandFieldName;
-  register: UseFormRegister<RegistroRapidoFormValues>;
-  setValue: UseFormSetValue<RegistroRapidoFormValues>;
-  onCustomChange: (isCustom: boolean) => void;
-  placeholder?: string;
-  helpText?: string;
-}> = ({ 
-  label, 
-  fieldName, 
-  register, 
-  setValue, 
-  onCustomChange, 
-  placeholder = "Seleccionar marca",
-  helpText
-}) => {
-  return (
-    <div className="space-y-2">
-      <label className={`block text-sm font-bold text-gray-800 mb-1`}>
-        {label}
-      </label>
-      <select
-        {...register(fieldName)}
-        onChange={(e) => {
-          const isCustom = e.target.value === 'custom';
-          onCustomChange(isCustom);
-          if (!isCustom) {
-            switch (fieldName) {
-              case 'racket_brand':
-                setValue('racket_custom_brand', '');
-                setValue('racket_custom_model', '');
-                break;
-              case 'drive_rubber_brand':
-                setValue('drive_rubber_custom_brand', '');
-                setValue('drive_rubber_custom_model', '');
-                break;
-              case 'backhand_rubber_brand':
-                setValue('backhand_rubber_custom_brand', '');
-                setValue('backhand_rubber_custom_model', '');
-                break;
-            }
-          }
-        }}
-        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
-      >
-        <option value="">{placeholder}</option>
-        {POPULAR_BRANDS.map((brand) => (
-          <option key={brand} value={brand}>
-            {brand}
-          </option>
-        ))}
-        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-          🎯 ¿Tu marca no está aquí? ¡Agrégala!
-        </option>
-      </select>
-      {helpText && (
-        <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{helpText}</span>
-        </p>
-      )}
-    </div>
-  );
-};
+// Add validation states - ACTUALIZADO: Marcas comparten, modelos independientes
+interface ValidationStates {
+  brand: ValidationResult | null;  // Marcas compartidas
+  racketModel: ValidationResult | null;  // Modelos independientes
+  driveRubberModel: ValidationResult | null;  // Modelos independientes
+  backhandRubberModel: ValidationResult | null;  // Modelos independientes
+  driveRubberHardness: ValidationResult | null;
+  backhandRubberHardness: ValidationResult | null;
+}
 
 const RegistroRapidoClient: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -506,11 +368,25 @@ const RegistroRapidoClient: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showCustomRacketBrand, setShowCustomRacketBrand] = useState(false);
-  const [showCustomDriveRubber, setShowCustomDriveRubber] = useState(false);
-  const [showCustomBackhandRubber, setShowCustomBackhandRubber] = useState(false);
+  const [showCustomRacketModel, setShowCustomRacketModel] = useState(false);
+  const [showCustomDriveRubberBrand, setShowCustomDriveRubberBrand] = useState(false);
+  const [showCustomDriveRubberModel, setShowCustomDriveRubberModel] = useState(false);
+  const [showCustomBackhandRubberBrand, setShowCustomBackhandRubberBrand] = useState(false);
+  const [showCustomBackhandRubberModel, setShowCustomBackhandRubberModel] = useState(false);
   const [showCustomClub, setShowCustomClub] = useState(false);
   const [showCustomDriveHardness, setShowCustomDriveHardness] = useState(false);
   const [showCustomBackhandHardness, setShowCustomBackhandHardness] = useState(false);
+  
+  // ACTUALIZADO: Estados de validación con marcas compartidas
+  const [validationStates, setValidationStates] = useState<ValidationStates>({
+    brand: null,  // Una sola validación para todas las marcas
+    racketModel: null,
+    driveRubberModel: null,
+    backhandRubberModel: null,
+    driveRubberHardness: null,
+    backhandRubberHardness: null,
+  });
+  
   const router = useRouter();
 
   const {
@@ -527,7 +403,6 @@ const RegistroRapidoClient: React.FC = () => {
   });
 
   const watchedProvince = watch('province');
-  const watchedClub = watch('club_name');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
 
   // Handle photo selection
@@ -543,30 +418,40 @@ const RegistroRapidoClient: React.FC = () => {
     }
   };
 
-  // Función de debugging para probar la API
-  const handleTestApi = async () => {
-    console.log('🧪 Testing API connection...');
-    const result = await testApiConnection();
-    console.log('API Test Result:', result);
-    
-    if (result && result.success) {
-      alert('✅ API connection successful! Check console for details.');
-    } else {
-      const message = result?.error?.message ?? 'Unknown error';
-      alert(`❌ API connection failed: ${message}`);
-    }
+  // Validation handlers
+  const handleValidationResult = (field: keyof ValidationStates, result: ValidationResult | null) => {
+    setValidationStates(prev => ({
+      ...prev,
+      [field]: result
+    }));
   };
-  const handleTestRegistro = async () => {
-    console.log('🧪 Testing registro-rapido endpoint...');
-    const result = await testRegistroRapido();
-    console.log('Registro Test Result:', result);
+
+  const handleSuggestionAccepted = (field: string, suggestedValue: string) => {
+    setValue(field as any, suggestedValue);
+    // Clear the validation state for this field
+    let validationField: keyof ValidationStates;
     
-    if (result && result.success) {
-      alert('✅ Registro endpoint working! Check console for details.');
+    // ACTUALIZADO: Mapear campos a estados de validación
+    if (field.includes('brand')) {
+      validationField = 'brand';  // Todas las marcas usan el mismo estado
+    } else if (field.includes('racket') && field.includes('model')) {
+      validationField = 'racketModel';
+    } else if (field.includes('drive_rubber') && field.includes('model')) {
+      validationField = 'driveRubberModel';
+    } else if (field.includes('backhand_rubber') && field.includes('model')) {
+      validationField = 'backhandRubberModel';
+    } else if (field.includes('drive_rubber') && field.includes('hardness')) {
+      validationField = 'driveRubberHardness';
+    } else if (field.includes('backhand_rubber') && field.includes('hardness')) {
+      validationField = 'backhandRubberHardness';
     } else {
-      const message = result?.error?.message ?? 'Unknown error';
-      alert(`❌ Registro endpoint failed: ${message}`);
+      return;
     }
+    
+    setValidationStates(prev => ({
+      ...prev,
+      [validationField]: null
+    }));
   };
 
   const onSubmit = async (data: RegistroRapidoFormValues) => {
@@ -712,7 +597,7 @@ const RegistroRapidoClient: React.FC = () => {
           >
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               </svg>
             </div>
             
@@ -813,27 +698,6 @@ const RegistroRapidoClient: React.FC = () => {
               />
             </motion.div>
 
-            {/* Debug buttons - Solo en desarrollo */}
-            {process.env.NODE_ENV === 'development' && (
-              <motion.div variants={itemVariants} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
-                <h3 className="text-sm font-semibold text-yellow-800 mb-2">🧪 Debug Tools</h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleTestApi}
-                    className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-                  >
-                    Test API Connection
-                  </button>
-                  <button
-                    onClick={handleTestRegistro}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                  >
-                    Test Registro Endpoint
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
             <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl p-8 mt-8">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 
@@ -849,7 +713,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-400">
                         <svg className="h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a2 2 0 00-2 2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         </svg>
                       </div>
                     )}
@@ -859,7 +723,6 @@ const RegistroRapidoClient: React.FC = () => {
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                     </label>
                     <input
@@ -939,17 +802,20 @@ const RegistroRapidoClient: React.FC = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="second_last_name" className={labelStyles}>
-                        Segundo Apellido
+                        Segundo Apellido <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         {...register('second_last_name')}
                         type="text"
                         id="second_last_name"
                         placeholder="Zurita"
-                        className={`${inputStyles} ${inputNormalStyles}`}
+                        className={`${inputStyles} ${errors.second_last_name ? inputErrorStyles : inputNormalStyles}`}
                       />
+                      {errors.second_last_name && (
+                        <p className="text-sm text-red-700 font-semibold">{errors.second_last_name.message}</p>
+                      )}
                       <p className="text-xs text-gray-600 font-medium">
-                        Campo opcional
+                        Campo obligatorio
                       </p>
                     </div>
                   </div>
@@ -1088,11 +954,32 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Club - ACTUALIZADO: Más opciones y club personalizado */}
+                {/* Liga y Club - ACTUALIZADO: Agregar selección de liga */}
                 <div className="space-y-6">
                   <h3 className={sectionTitleStyles}>
-                    Club
+                    Liga y Club
                   </h3>
+                  
+                  {/* NUEVO CAMPO: Liga */}
+                  <div className="space-y-2">
+                    <label htmlFor="league" className={labelStyles}>
+                      Liga
+                    </label>
+                    <select
+                      {...register('league')}
+                      id="league"
+                      className={`${inputStyles} ${inputNormalStyles}`}
+                    >
+                      <option value="">Seleccionar liga</option>
+                      <option value="593LATM">593LATM</option>
+                    </select>
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Por el momento solo está disponible la liga 593LATM</span>
+                    </p>
+                  </div>
                   
                   <div className="space-y-2">
                     <label htmlFor="club_name" className={labelStyles}>Club</label>
@@ -1150,6 +1037,26 @@ const RegistroRapidoClient: React.FC = () => {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* Campo de Ranking */}
+                  <div className="space-y-2">
+                    <label htmlFor="ranking" className={labelStyles}>
+                      Ranking
+                    </label>
+                    <input
+                      {...register('ranking')}
+                      type="text"
+                      id="ranking"
+                      placeholder="Ej: 1500, 1200, 800, etc."
+                      className={`${inputStyles} ${inputNormalStyles}`}
+                    />
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Ingresa tu ranking actual si lo conoces (campo opcional)</span>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Estilo de Juego */}
@@ -1187,14 +1094,14 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Raqueta - Palo - ACTUALIZADO: Modelos en dropdown */}
-                <div className="space-y-6">
-                  <h3 className={sectionTitleStyles}>
-                    Raqueta - Palo
+                {/* Raqueta - Palo - ACTUALIZADO: Opciones independientes para marca y modelo */}
+                <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    🏓 Raqueta - Palo
                   </h3>
                   
                   {/* Banner informativo sobre marcas personalizadas */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
                     <div className="flex items-center gap-3">
                       <div className="bg-blue-100 rounded-full p-2">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1204,27 +1111,58 @@ const RegistroRapidoClient: React.FC = () => {
                       <div>
                         <h4 className="text-blue-900 font-bold text-sm">💡 ¿No encuentras tu marca o modelo?</h4>
                         <p className="text-blue-800 text-xs font-medium">
-                          Selecciona &quot;¿Tu marca no está aquí? ¡Agrégala!&quot; para ingresar cualquier marca o modelo personalizado
+                          Cada campo tiene su propia opción para agregar marcas o modelos personalizados
                         </p>
                       </div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <BrandSelector
-                      label="Marca"
-                      fieldName="racket_brand"
-                      register={register}
-                      setValue={setValue}
-                      onCustomChange={setShowCustomRacketBrand}
-                      helpText="Marcas populares de raquetas de tenis de mesa"
-                    />
+                    {/* Campo de Marca con opción personalizada independiente */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-800 mb-1">Marca</label>
+                      <select
+                        {...register('racket_brand')}
+                        onChange={(e) => {
+                          const isCustom = e.target.value === 'custom';
+                          setShowCustomRacketBrand(isCustom);
+                          if (!isCustom) {
+                            setValue('custom_racket_brand', '');
+                          }
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                      >
+                        <option value="">Seleccionar marca</option>
+                        {POPULAR_BRANDS.map((brand) => (
+                          <option key={brand} value={brand}>
+                            {brand}
+                          </option>
+                        ))}
+                        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                        </option>
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Marcas populares de raquetas de tenis de mesa</span>
+                      </p>
+                    </div>
 
+                    {/* Campo de Modelo con opción personalizada independiente */}
                     <div className="space-y-2">
                       <label htmlFor="racket_model" className={labelStyles}>Modelo</label>
                       <select
                         {...register('racket_model')}
                         id="racket_model"
+                        onChange={(e) => {
+                          const isCustomModel = e.target.value === 'custom_model';
+                          setShowCustomRacketModel(isCustomModel);
+                          if (!isCustomModel) {
+                            setValue('custom_racket_model', '');
+                          }
+                        }}
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
@@ -1233,47 +1171,127 @@ const RegistroRapidoClient: React.FC = () => {
                             {model}
                           </option>
                         ))}
+                        <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
+                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                        </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
                         Modelos populares de raquetas
                       </p>
                     </div>
 
-                    <CustomBrandFields
-                      show={showCustomRacketBrand}
-                      brandFieldName="racket_custom_brand"
-                      modelFieldName="racket_custom_model"
-                      register={register}
-                      brandLabel="Marca de Raqueta"
-                      modelLabel="Modelo de Raqueta"
-                      brandPlaceholder="Ej: Tibhar, Andro, Gewo"
-                      modelPlaceholder="Ej: Stratus PowerWood, Ligna CO"
-                      type="racket"
-                    />
-                  </div>
-                </div>
+                    {/* Campo personalizado para marca */}
+                    {showCustomRacketBrand && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                      >
+                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
+                          Marca Personalizada de Raqueta
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_racket_brand')}
+                            type="text"
+                            placeholder="Escribe la marca de tu raqueta"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="brand"
+                            value={watch('custom_racket_brand') || ''}
+                            onValidationResult={(result) => handleValidationResult('brand', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_brand', value)}
+                            isVisible={showCustomRacketBrand}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
 
-                {/* Caucho del Drive - ACTUALIZADO: Modelos en dropdown y más hardness */}
-                <div className="space-y-6">
-                  <h3 className={sectionTitleStyles}>
-                    Caucho del Drive
+                    {/* Campo personalizado para modelo */}
+                    {showCustomRacketModel && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg"
+                      >
+                        <h4 className="text-lg font-semibold text-green-800 mb-3">
+                          Modelo Personalizado de Raqueta
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_racket_model')}
+                            type="text"
+                            placeholder="Escribe el modelo de tu raqueta"
+                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="racket_model"
+                            value={watch('custom_racket_model') || ''}
+                            onValidationResult={(result) => handleValidationResult('racketModel', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_model', value)}
+                            isVisible={showCustomRacketModel}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Caucho del Drive - ACTUALIZADO: Opciones independientes para marca y modelo */}
+                <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    🔴 Caucho del Drive
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <BrandSelector
-                      label="Marca"
-                      fieldName="drive_rubber_brand"
-                      register={register}
-                      setValue={setValue}
-                      onCustomChange={setShowCustomDriveRubber}
-                      helpText="Marcas de cauchos más utilizadas"
-                    />
+                    {/* Campo de Marca con opción personalizada independiente */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-800 mb-1">Marca</label>
+                      <select
+                        {...register('drive_rubber_brand')}
+                        onChange={(e) => {
+                          const isCustom = e.target.value === 'custom';
+                          setShowCustomDriveRubberBrand(isCustom);
+                          if (!isCustom) {
+                            setValue('custom_drive_rubber_brand', '');
+                          }
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                      >
+                        <option value="">Seleccionar marca</option>
+                        {POPULAR_BRANDS.map((brand) => (
+                          <option key={brand} value={brand}>
+                            {brand}
+                          </option>
+                        ))}
+                        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                        </option>
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Marcas de cauchos más utilizadas</span>
+                      </p>
+                    </div>
 
+                    {/* Campo de Modelo con opción personalizada independiente */}
                     <div className="space-y-2">
                       <label htmlFor="drive_rubber_model" className={labelStyles}>Modelo</label>
                       <select
                         {...register('drive_rubber_model')}
                         id="drive_rubber_model"
+                        onChange={(e) => {
+                          const isCustomModel = e.target.value === 'custom_model';
+                          setShowCustomDriveRubberModel(isCustomModel);
+                          if (!isCustomModel) {
+                            setValue('custom_drive_rubber_model', '');
+                          }
+                        }}
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
@@ -1282,6 +1300,9 @@ const RegistroRapidoClient: React.FC = () => {
                             {model}
                           </option>
                         ))}
+                        <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
+                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                        </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
                         Modelos populares para drive
@@ -1345,7 +1366,7 @@ const RegistroRapidoClient: React.FC = () => {
                           const isCustom = e.target.value === 'custom';
                           setShowCustomDriveHardness(isCustom);
                           if (!isCustom) {
-                            setValue('drive_rubber_custom_hardness', '');
+                            setValue('custom_drive_rubber_hardness', '');
                           }
                         }}
                         className={`${inputStyles} ${inputNormalStyles}`}
@@ -1365,73 +1386,147 @@ const RegistroRapidoClient: React.FC = () => {
                       </p>
                     </div>
 
+                    {/* Campo personalizado para marca */}
+                    {showCustomDriveRubberBrand && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg col-span-full"
+                      >
+                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
+                          Marca Personalizada de Caucho Drive
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_drive_rubber_brand')}
+                            type="text"
+                            placeholder="Escribe la marca de tu caucho drive"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="brand"
+                            value={watch('custom_drive_rubber_brand') || ''}
+                            onValidationResult={(result) => handleValidationResult('brand', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_brand', value)}
+                            isVisible={showCustomDriveRubberBrand}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para modelo */}
+                    {showCustomDriveRubberModel && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg col-span-full"
+                      >
+                        <h4 className="text-lg font-semibold text-green-800 mb-3">
+                          Modelo Personalizado de Caucho Drive
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_drive_rubber_model')}
+                            type="text"
+                            placeholder="Escribe el modelo de tu caucho drive"
+                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="drive_rubber_model"
+                            value={watch('custom_drive_rubber_model') || ''}
+                            onValidationResult={(result) => handleValidationResult('driveRubberModel', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_model', value)}
+                            isVisible={showCustomDriveRubberModel}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
                     {/* Campo personalizado para hardness del drive */}
                     {showCustomDriveHardness && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="col-span-full bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4"
+                        className="mt-4 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg col-span-full"
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          <h4 className="text-purple-800 font-bold text-sm">Hardness Personalizado - Drive</h4>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-bold text-purple-800">
-                            Hardness del Drive <span className="text-red-600">*</span>
-                          </label>
+                        <h4 className="text-lg font-semibold text-purple-800 mb-3">
+                          Hardness Personalizado - Drive
+                        </h4>
+                        <div className="space-y-3">
                           <input
-                            {...register('drive_rubber_custom_hardness')}
+                            {...register('custom_drive_rubber_hardness')}
                             type="text"
                             placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                            className="w-full px-4 py-3 rounded-xl border-2 border-purple-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 hover:border-purple-500 text-gray-900 font-semibold placeholder-purple-600"
+                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           />
-                          <p className="text-xs text-purple-700 font-medium">
-                            💡 Escribe cualquier valor de hardness: h35-h55, grados (°), descriptivos (Soft, Medium, Hard), etc.
-                          </p>
+                          <CustomFieldValidator
+                            fieldType="drive_rubber_hardness"
+                            value={watch('custom_drive_rubber_hardness') || ''}
+                            onValidationResult={(result) => handleValidationResult('driveRubberHardness', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_hardness', value)}
+                            isVisible={showCustomDriveHardness}
+                          />
                         </div>
                       </motion.div>
                     )}
-
-                    <CustomBrandFields
-                      show={showCustomDriveRubber}
-                      brandFieldName="drive_rubber_custom_brand"
-                      modelFieldName="drive_rubber_custom_model"
-                      register={register}
-                      brandLabel="Marca de Caucho Drive"
-                      modelLabel="Modelo de Caucho Drive"
-                      brandPlaceholder="Ej: Tibhar, Andro, Gewo"
-                      modelPlaceholder="Ej: Evolution MX-P, Hexer"
-                      type="rubber"
-                    />
                   </div>
-                </div>
+                </motion.div>
 
-                {/* Caucho del Back - ACTUALIZADO: Modelos en dropdown */}
-                <div className="space-y-6">
-                  <h3 className={sectionTitleStyles}>
-                    Caucho del Back
+                {/* Caucho del Back - ACTUALIZADO: Opciones independientes para marca y modelo */}
+                <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    ⚫ Caucho del Back
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <BrandSelector
-                      label="Marca"
-                      fieldName="backhand_rubber_brand"
-                      register={register}
-                      setValue={setValue}
-                      onCustomChange={setShowCustomBackhandRubber}
-                      helpText="Marcas de cauchos para revés"
-                    />
+                    {/* Campo de Marca con opción personalizada independiente */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-800 mb-1">Marca</label>
+                      <select
+                        {...register('backhand_rubber_brand')}
+                        onChange={(e) => {
+                          const isCustom = e.target.value === 'custom';
+                          setShowCustomBackhandRubberBrand(isCustom);
+                          if (!isCustom) {
+                            setValue('custom_backhand_rubber_brand', '');
+                          }
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                      >
+                        <option value="">Seleccionar marca</option>
+                        {POPULAR_BRANDS.map((brand) => (
+                          <option key={brand} value={brand}>
+                            {brand}
+                          </option>
+                        ))}
+                        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                        </option>
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Marcas de cauchos para revés</span>
+                      </p>
+                    </div>
 
+                    {/* Campo de Modelo con opción personalizada independiente */}
                     <div className="space-y-2">
                       <label htmlFor="backhand_rubber_model" className={labelStyles}>Modelo</label>
                       <select
                         {...register('backhand_rubber_model')}
                         id="backhand_rubber_model"
+                        onChange={(e) => {
+                          const isCustomModel = e.target.value === 'custom_model';
+                          setShowCustomBackhandRubberModel(isCustomModel);
+                          if (!isCustomModel) {
+                            setValue('custom_backhand_rubber_model', '');
+                          }
+                        }}
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
@@ -1440,6 +1535,9 @@ const RegistroRapidoClient: React.FC = () => {
                             {model}
                           </option>
                         ))}
+                        <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
+                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                        </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
                         Modelos populares para backhand
@@ -1503,7 +1601,7 @@ const RegistroRapidoClient: React.FC = () => {
                           const isCustom = e.target.value === 'custom';
                           setShowCustomBackhandHardness(isCustom);
                           if (!isCustom) {
-                            setValue('backhand_rubber_custom_hardness', '');
+                            setValue('custom_backhand_rubber_hardness', '');
                           }
                         }}
                         className={`${inputStyles} ${inputNormalStyles}`}
@@ -1514,11 +1612,72 @@ const RegistroRapidoClient: React.FC = () => {
                             {hardness}
                           </option>
                         ))}
+                        <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
+                          ✏️ ¿Tu hardness no está aquí? ¡Escríbelo!
+                        </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
                         Incluye N/A si no conoces la dureza
                       </p>
                     </div>
+
+                    {/* Campo personalizado para marca */}
+                    {showCustomBackhandRubberBrand && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg col-span-full"
+                      >
+                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
+                          Marca Personalizada de Caucho Back
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_backhand_rubber_brand')}
+                            type="text"
+                            placeholder="Escribe la marca de tu caucho back"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="brand"
+                            value={watch('custom_backhand_rubber_brand') || ''}
+                            onValidationResult={(result) => handleValidationResult('brand', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_brand', value)}
+                            isVisible={showCustomBackhandRubberBrand}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para modelo */}
+                    {showCustomBackhandRubberModel && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-cyan-50 border-2 border-cyan-200 rounded-lg col-span-full"
+                      >
+                        <h4 className="text-lg font-semibold text-cyan-800 mb-3">
+                          Modelo Personalizado de Caucho Back
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_backhand_rubber_model')}
+                            type="text"
+                            placeholder="Escribe el modelo de tu caucho back"
+                            className="w-full px-4 py-3 border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                          />
+                          <CustomFieldValidator
+                            fieldType="backhand_rubber_model"
+                            value={watch('custom_backhand_rubber_model') || ''}
+                            onValidationResult={(result) => handleValidationResult('backhandRubberModel', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_model', value)}
+                            isVisible={showCustomBackhandRubberModel}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
 
                     {/* Campo personalizado para hardness del back */}
                     {showCustomBackhandHardness && (
@@ -1526,45 +1685,30 @@ const RegistroRapidoClient: React.FC = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="col-span-full bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4"
+                        className="mt-4 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg col-span-full"
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <h4 className="text-purple-800 font-bold text-sm">Hardness Personalizado - Back</h4>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-bold text-purple-800">
-                            Hardness del Back <span className="text-red-600">*</span>
-                          </label>
+                        <h4 className="text-lg font-semibold text-purple-800 mb-3">
+                          Hardness Personalizado - Back
+                        </h4>
+                        <div className="space-y-3">
                           <input
-                            {...register('backhand_rubber_custom_hardness')}
+                            {...register('custom_backhand_rubber_hardness')}
                             type="text"
                             placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                            className="w-full px-4 py-3 rounded-xl border-2 border-purple-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 hover:border-purple-500 text-gray-900 font-semibold placeholder-purple-600"
+                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           />
-                          <p className="text-xs text-purple-700 font-medium">
-                            💡 Escribe cualquier valor de hardness: h35-h55, grados (°), descriptivos (Soft, Medium, Hard), etc.
-                          </p>
+                          <CustomFieldValidator
+                            fieldType="backhand_rubber_hardness"
+                            value={watch('custom_backhand_rubber_hardness') || ''}
+                            onValidationResult={(result) => handleValidationResult('backhandRubberHardness', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_hardness', value)}
+                            isVisible={showCustomBackhandHardness}
+                          />
                         </div>
                       </motion.div>
                     )}
-
-                    <CustomBrandFields
-                      show={showCustomBackhandRubber}
-                      brandFieldName="backhand_rubber_custom_brand"
-                      modelFieldName="backhand_rubber_custom_model"
-                      register={register}
-                      brandLabel="Marca de Caucho Back"
-                      modelLabel="Modelo de Caucho Back"
-                      brandPlaceholder="Ej: Tibhar, Andro, Gewo"
-                      modelPlaceholder="Ej: Grass D.TecS, Plaxon"
-                      type="rubber"
-                    />
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Información adicional */}
                 <div className="space-y-6">
@@ -1606,6 +1750,7 @@ const RegistroRapidoClient: React.FC = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
+                        Procesando...
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2">
