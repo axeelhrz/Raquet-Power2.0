@@ -427,7 +427,7 @@ const RegistroRapidoClient: React.FC = () => {
   };
 
   const handleSuggestionAccepted = (field: string, suggestedValue: string) => {
-    setValue(field as any, suggestedValue);
+    setValue(field as keyof RegistroRapidoFormValues, suggestedValue);
     // Clear the validation state for this field
     let validationField: keyof ValidationStates;
     
@@ -457,7 +457,7 @@ const RegistroRapidoClient: React.FC = () => {
   const onSubmit = async (data: RegistroRapidoFormValues) => {
     setIsSubmitting(true);
     try {
-      console.log('📝 Form data being submitted:', data);
+      console.log('Form data being submitted:', data);
       
       const formData = new FormData();
       
@@ -465,7 +465,7 @@ const RegistroRapidoClient: React.FC = () => {
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           formData.append(key, String(value));
-          console.log(`📋 Adding to FormData: ${key} = ${value}`);
+          console.log(`Adding to FormData: ${key} = ${value}`);
         }
       });
 
@@ -490,10 +490,10 @@ const RegistroRapidoClient: React.FC = () => {
         }
 
         formData.append('photo', selectedPhoto);
-        console.log('📸 Photo added to FormData:', selectedPhoto.name, selectedPhoto.size);
+        console.log('Photo added to FormData:', selectedPhoto.name, selectedPhoto.size);
       }
 
-      console.log('🚀 Sending request to /api/registro-rapido...');
+      console.log('Sending request to /api/registro-rapido...');
       
       // Send to API
       const response = await axios.post('/api/registro-rapido', formData, {
@@ -503,7 +503,7 @@ const RegistroRapidoClient: React.FC = () => {
         },
       });
 
-      console.log('✅ Response received:', response.data);
+      console.log('Response received:', response.data);
 
       // Extract registration data from response
       const responseData = response.data;
@@ -521,10 +521,10 @@ const RegistroRapidoClient: React.FC = () => {
       
       setIsSuccess(true);
     } catch (error: unknown) {
-      console.error('❌ Error en registro rápido:', error);
+      console.error('Error en registro rápido:', error);
 
       if (isAxiosError(error)) {
-        console.error('📊 Error details:', {
+        console.error('Error details:', {
           status: error.response?.status,
           statusText: error.response?.statusText,
           data: error.response?.data,
@@ -579,8 +579,8 @@ const RegistroRapidoClient: React.FC = () => {
   };
 
   // Estilos mejorados para mejor visibilidad
-  const inputStyles = "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400";
-  const inputErrorStyles = "border-red-400 bg-red-50 text-red-900 font-semibold placeholder-red-500";
+  const inputStyles = "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400";
+  const inputErrorStyles = "border-red-400 bg-red-50 text-red-900 font-bold placeholder-red-500";
   const inputNormalStyles = "border-gray-300 hover:border-gray-400";
   const labelStyles = "block text-sm font-bold text-gray-800 mb-1";
   const sectionTitleStyles = "text-xl font-bold text-gray-900 border-b-2 border-gray-300 pb-3 mb-6";
@@ -654,9 +654,12 @@ const RegistroRapidoClient: React.FC = () => {
               </button>
               <button
                 onClick={() => window.location.href = 'https://raquet-power2-0.vercel.app/registro-rapido'}
-                className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300"
+                className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300 flex items-center justify-center gap-2"
               >
-                🏠 Volver al Inicio
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Volver al Inicio
               </button>
             </div>
             
@@ -737,8 +740,11 @@ const RegistroRapidoClient: React.FC = () => {
 
                 {/* Photo info */}
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 font-medium">
-                    📸 Foto opcional - Máximo 5MB (JPEG, PNG, GIF, WebP)
+                  <p className="text-sm text-gray-600 font-medium flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    </svg>
+                    Foto opcional - Máximo 5MB (JPEG, PNG, GIF, WebP)
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Puedes completar el registro sin foto y agregarla después
@@ -1001,7 +1007,12 @@ const RegistroRapidoClient: React.FC = () => {
                         </option>
                       ))}
                       <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                        🏓 ¿Tu club no está aquí? ¡Agrégalo!
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          ¿Tu club no está aquí? ¡Agrégalo!
+                        </div>
                       </option>
                     </select>
                   </div>
@@ -1029,7 +1040,7 @@ const RegistroRapidoClient: React.FC = () => {
                           {...register('custom_club_name')}
                           type="text"
                           placeholder="Ej: Club Deportivo Los Campeones"
-                          className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-semibold placeholder-amber-600"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-bold placeholder-amber-600"
                         />
                         <p className="text-xs text-amber-700 font-medium">
                           Ingresa el nombre completo de tu club
@@ -1096,8 +1107,11 @@ const RegistroRapidoClient: React.FC = () => {
 
                 {/* Raqueta - Palo - ACTUALIZADO: Opciones independientes para marca y modelo */}
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    🏓 Raqueta - Palo
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Raqueta - Palo
                   </h3>
                   
                   {/* Banner informativo sobre marcas personalizadas */}
@@ -1109,7 +1123,12 @@ const RegistroRapidoClient: React.FC = () => {
                         </svg>
                       </div>
                       <div>
-                        <h4 className="text-blue-900 font-bold text-sm">💡 ¿No encuentras tu marca o modelo?</h4>
+                        <h4 className="text-blue-900 font-bold text-sm flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          ¿No encuentras tu marca o modelo?
+                        </h4>
                         <p className="text-blue-800 text-xs font-medium">
                           Cada campo tiene su propia opción para agregar marcas o modelos personalizados
                         </p>
@@ -1130,7 +1149,7 @@ const RegistroRapidoClient: React.FC = () => {
                             setValue('custom_racket_brand', '');
                           }
                         }}
-                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
                         {POPULAR_BRANDS.map((brand) => (
@@ -1139,7 +1158,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                          ¿Tu marca no está aquí? ¡Agrégala!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
@@ -1172,7 +1191,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
-                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                          ¿Tu modelo no está aquí? ¡Agrégalo!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1196,7 +1215,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_racket_brand')}
                             type="text"
                             placeholder="Escribe la marca de tu raqueta"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
                           />
                           <CustomFieldValidator
                             fieldType="brand"
@@ -1225,7 +1244,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_racket_model')}
                             type="text"
                             placeholder="Escribe el modelo de tu raqueta"
-                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600"
                           />
                           <CustomFieldValidator
                             fieldType="racket_model"
@@ -1242,8 +1261,9 @@ const RegistroRapidoClient: React.FC = () => {
 
                 {/* Caucho del Drive - ACTUALIZADO: Opciones independientes para marca y modelo */}
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    🔴 Caucho del Drive
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-red-500 rounded-full"></div>
+                    Caucho del Drive
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1259,7 +1279,7 @@ const RegistroRapidoClient: React.FC = () => {
                             setValue('custom_drive_rubber_brand', '');
                           }
                         }}
-                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
                         {POPULAR_BRANDS.map((brand) => (
@@ -1268,7 +1288,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                          ¿Tu marca no está aquí? ¡Agrégala!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
@@ -1301,7 +1321,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
-                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                          ¿Tu modelo no está aquí? ¡Agrégalo!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1378,7 +1398,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                          ✏️ ¿Tu hardness no está aquí? ¡Escríbelo!
+                          ¿Tu hardness no está aquí? ¡Escríbelo!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1402,7 +1422,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_drive_rubber_brand')}
                             type="text"
                             placeholder="Escribe la marca de tu caucho drive"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
                           />
                           <CustomFieldValidator
                             fieldType="brand"
@@ -1431,7 +1451,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_drive_rubber_model')}
                             type="text"
                             placeholder="Escribe el modelo de tu caucho drive"
-                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600"
                           />
                           <CustomFieldValidator
                             fieldType="drive_rubber_model"
@@ -1460,7 +1480,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_drive_rubber_hardness')}
                             type="text"
                             placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600"
                           />
                           <CustomFieldValidator
                             fieldType="drive_rubber_hardness"
@@ -1477,8 +1497,9 @@ const RegistroRapidoClient: React.FC = () => {
 
                 {/* Caucho del Back - ACTUALIZADO: Opciones independientes para marca y modelo */}
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    ⚫ Caucho del Back
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-black rounded-full"></div>
+                    Caucho del Back
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1494,7 +1515,7 @@ const RegistroRapidoClient: React.FC = () => {
                             setValue('custom_backhand_rubber_brand', '');
                           }
                         }}
-                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-semibold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
+                        className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
                         {POPULAR_BRANDS.map((brand) => (
@@ -1503,7 +1524,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                          🎯 ¿Tu marca no está aquí? ¡Agrégala!
+                          ¿Tu marca no está aquí? ¡Agrégala!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
@@ -1536,7 +1557,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom_model" className="bg-amber-50 text-amber-800 font-bold">
-                          🏓 ¿Tu modelo no está aquí? ¡Agrégalo!
+                          ¿Tu modelo no está aquí? ¡Agrégalo!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1613,7 +1634,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                          ✏️ ¿Tu hardness no está aquí? ¡Escríbelo!
+                          ¿Tu hardness no está aquí? ¡Escríbelo!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1637,7 +1658,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_backhand_rubber_brand')}
                             type="text"
                             placeholder="Escribe la marca de tu caucho back"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
                           />
                           <CustomFieldValidator
                             fieldType="brand"
@@ -1666,7 +1687,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_backhand_rubber_model')}
                             type="text"
                             placeholder="Escribe el modelo de tu caucho back"
-                            className="w-full px-4 py-3 border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600"
                           />
                           <CustomFieldValidator
                             fieldType="backhand_rubber_model"
@@ -1695,7 +1716,7 @@ const RegistroRapidoClient: React.FC = () => {
                             {...register('custom_backhand_rubber_hardness')}
                             type="text"
                             placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600"
                           />
                           <CustomFieldValidator
                             fieldType="backhand_rubber_hardness"
@@ -1725,8 +1746,11 @@ const RegistroRapidoClient: React.FC = () => {
                       placeholder="Información adicional que consideres relevante..."
                       className={`${inputStyles} ${inputNormalStyles} resize-none`}
                     />
-                    <p className="text-xs text-gray-600 font-medium">
-                      💬 Espacio opcional para cualquier información adicional
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span>Espacio opcional para cualquier información adicional</span>
                     </p>
                   </div>
                 </div>
@@ -1762,8 +1786,11 @@ const RegistroRapidoClient: React.FC = () => {
                     )}
                   </motion.button>
                   
-                  <p className="text-center text-sm text-gray-600 font-medium mt-4">
-                    🔒 Tu información está segura y será utilizada únicamente para el censo de tenis de mesa
+                  <p className="text-center text-sm text-gray-600 font-medium mt-4 flex items-center justify-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Tu información está segura y será utilizada únicamente para el censo de tenis de mesa
                   </p>
                 </div>
               </form>
