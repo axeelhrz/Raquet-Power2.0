@@ -24,8 +24,9 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [isAdding, setIsAdding] = useState(false);
 
   // Función debounced para validar
-  const debouncedValidate = debounce(async (fieldType: FieldType, value: string) => {
-    if (!value || value.trim().length < 2) {
+  const debouncedValidate = debounce(async (...args: unknown[]) => {
+    const [fieldType, value] = args as [FieldType, string];
+    if (!value || typeof value !== 'string' || value.trim().length < 2) {
       setValidationResult(null);
       onValidationResult(null);
       return;
