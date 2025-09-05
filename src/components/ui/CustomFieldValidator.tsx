@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { validateCustomField, addCustomField, debounce, getFieldTypeDisplayName, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
+import { validateCustomField, addCustomField, debounce, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
 
 interface CustomFieldValidatorProps {
   fieldType: FieldType;
@@ -342,7 +342,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-green-800 mb-2">
-                  ¡Perfecto! "{value}" no existe en el listado
+                  ¡Perfecto! &quot;{value}&quot; no existe en el listado
                 </p>
                 <p className="text-xs text-green-600 font-medium mb-3">
                   Puedes agregarlo para que esté disponible para todos los usuarios
@@ -362,7 +362,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Agregar "{value}" al listado
+                      Agregar &quot;{value}&quot; al listado
                     </>
                   )}
                 </button>
