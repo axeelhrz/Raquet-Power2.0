@@ -81,6 +81,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
 
     setIsValidating(true);
     setShowAddButton(false);
+    setValidationResult(null);
     
     try {
       // PRIMERO: Validar contra la lista actual (más rápido)
@@ -96,11 +97,16 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
       const result = await validateCustomField(fieldType, value);
       
-      if (result) {
+      if (result && result.is_duplicate) {
+        // Existe en la base de datos
+        setValidationResult(result);
+        onValidationResult(result);
+      } else if (result && result.match_type === 'partial') {
+        // Hay sugerencias parciales
         setValidationResult(result);
         onValidationResult(result);
       } else {
-        // TERCERO: Si no existe en ningún lado, mostrar botón para agregar
+        // TERCERO: No existe en ningún lado, mostrar botón para agregar
         setValidationResult(null);
         onValidationResult(null);
         setShowAddButton(true);
@@ -118,7 +124,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
 
   // Validar cuando cambie el valor
   useEffect(() => {
-    if (isVisible && value) {
+    if (isVisible && value && value.trim().length >= 2) {
       debouncedValidate(fieldType, value);
     } else {
       setValidationResult(null);
@@ -195,6 +201,26 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
         );
+      case 'racket_model':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        );
+      case 'rubber_drive_model':
+      case 'rubber_back_model':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        );
+      case 'drive_rubber_hardness':
+      case 'backhand_rubber_hardness':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        );
       default:
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,13 +268,6 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
           <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
             <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
             <span className="text-sm text-blue-700 font-bold">Validando...</span>
-          </div>
-        )}
-
-        {isAdding && (
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm">
-            <div className="animate-spin w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full"></div>
-            <span className="text-sm text-green-700 font-bold">Agregando al listado...</span>
           </div>
         )}
 
