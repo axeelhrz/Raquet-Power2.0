@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { validateCustomField, addCustomField, debounce, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
 
@@ -25,6 +25,11 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // NUEVO: Referencias para evitar validaciones redundantes
+  const lastValidatedValue = useRef<string>('');
+  const lastValidatedFieldType = useRef<FieldType | null>(null);
+  const currentOptionsRef = useRef<string[]>([]);
 
   // Función para validar contra la lista actual
   const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
@@ -68,20 +73,43 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     return null;
   };
 
-  // Función debounced para validar
+  // OPTIMIZADO: Función debounced para validar con verificación de cambios
   const debouncedValidate = debounce(async (...args: unknown[]) => {
-    const [fieldType, value] = args as [FieldType, string];
-    if (!value || typeof value !== 'string' || value.trim().length < 2) {
-      setValidationResult(null);
-      onValidationResult(null);
+    const [fieldType, value, currentOptions] = args as [FieldType, string, string[]];
+    
+    // NUEVO: Verificar si realmente necesitamos validar
+    const normalizedValue = value?.trim() || '';
+    const optionsChanged = JSON.stringify(currentOptions) !== JSON.stringify(currentOptionsRef.current);
+    
+    // Si el valor y el tipo de campo no han cambiado, y las opciones tampoco, no validar
+    if (
+      normalizedValue === lastValidatedValue.current && 
+      fieldType === lastValidatedFieldType.current &&
+      !optionsChanged
+    ) {
       return;
     }
+    
+    // Si el valor está vacío o es muy corto, limpiar validación
+    if (!normalizedValue || normalizedValue.length < 2) {
+      setValidationResult(null);
+      onValidationResult(null);
+      lastValidatedValue.current = normalizedValue;
+      lastValidatedFieldType.current = fieldType;
+      currentOptionsRef.current = [...currentOptions];
+      return;
+    }
+
+    // Actualizar referencias antes de validar
+    lastValidatedValue.current = normalizedValue;
+    lastValidatedFieldType.current = fieldType;
+    currentOptionsRef.current = [...currentOptions];
 
     setIsValidating(true);
     
     try {
       // PRIMERO: Validar contra la lista actual (más rápido)
-      const localValidation = validateAgainstCurrentOptions(value);
+      const localValidation = validateAgainstCurrentOptions(normalizedValue);
       
       if (localValidation) {
         setValidationResult(localValidation);
@@ -91,7 +119,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       }
       
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
-      const result = await validateCustomField(fieldType, value);
+      const result = await validateCustomField(fieldType, normalizedValue);
       setValidationResult(result);
       onValidationResult(result);
     } catch (error) {
@@ -103,17 +131,44 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     }
   }, 800);
 
-  // Validar cuando cambie el valor
+  // OPTIMIZADO: Validar cuando cambie el valor, pero con verificaciones inteligentes
   useEffect(() => {
     if (isVisible && value) {
-      debouncedValidate(fieldType, value);
+      debouncedValidate(fieldType, value, currentOptions);
     } else {
-      setValidationResult(null);
-      onValidationResult(null);
+      // Solo limpiar si realmente hay algo que limpiar
+      if (validationResult !== null) {
+        setValidationResult(null);
+        onValidationResult(null);
+      }
+      // Actualizar referencias incluso cuando no es visible
+      lastValidatedValue.current = '';
+      lastValidatedFieldType.current = fieldType;
+      currentOptionsRef.current = [...currentOptions];
     }
     // Limpiar mensaje de éxito cuando cambie el valor
-    setSuccessMessage(null);
-  }, [fieldType, value, isVisible, currentOptions]);
+    if (successMessage) {
+      setSuccessMessage(null);
+    }
+  }, [fieldType, value, isVisible]); // REMOVIDO: currentOptions de las dependencias
+
+  // NUEVO: Efecto separado para manejar cambios en currentOptions
+  useEffect(() => {
+    const optionsChanged = JSON.stringify(currentOptions) !== JSON.stringify(currentOptionsRef.current);
+    
+    // Solo revalidar si las opciones cambiaron Y tenemos un valor para validar
+    if (optionsChanged && isVisible && value && value.trim().length >= 2) {
+      // Pequeño delay para evitar validaciones excesivas
+      const timeoutId = setTimeout(() => {
+        debouncedValidate(fieldType, value, currentOptions);
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    } else if (optionsChanged) {
+      // Solo actualizar la referencia si no hay valor que validar
+      currentOptionsRef.current = [...currentOptions];
+    }
+  }, [currentOptions, fieldType, value, isVisible]);
 
   // Función para agregar campo cuando el usuario confirma
   const handleConfirmAdd = async () => {
@@ -156,6 +211,8 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     onSuggestionAccepted(suggestion);
     setValidationResult(null);
     setSuccessMessage(null);
+    // Actualizar referencias para evitar revalidación innecesaria
+    lastValidatedValue.current = suggestion;
   };
 
   if (!isVisible || (!validationResult && !isValidating && !successMessage)) {
