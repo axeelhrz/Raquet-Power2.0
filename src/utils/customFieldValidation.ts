@@ -112,3 +112,21 @@ export const debounce = <T extends (...args: unknown[]) => unknown>(
     timeout = setTimeout(() => func(...args), wait);
   };
 };
+
+/**
+ * Obtener el nombre amigable para mostrar al usuario según el tipo de campo
+ */
+export const getFieldTypeDisplayName = (fieldType: FieldType): string => {
+  const displayNames: Record<FieldType, string> = {
+    'brand': 'Marca',
+    'racket_model': 'Modelo de Raqueta',
+    'rubber_drive_model': 'Modelo de Caucho Drive',
+    'rubber_back_model': 'Modelo de Caucho Back',
+    'drive_rubber_hardness': 'Dureza Drive',
+    'backhand_rubber_hardness': 'Dureza Back',
+    'club': 'Club',
+    'league': 'Liga'
+  };
+  
+  return displayNames[fieldType] || fieldType;
+};

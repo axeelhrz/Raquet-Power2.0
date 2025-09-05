@@ -1092,7 +1092,12 @@ const RegistroRapidoClient: React.FC = () => {
                   
                   {/* ACTUALIZADO: Renderizar campo de club con opciones dinámicas */}
                   <div className="space-y-2">
-                    <label htmlFor="club_name" className={labelStyles}>Club</label>
+                    <label htmlFor="club_name" className={labelStyles}>
+                      Club
+                      {clubOptions.isLoading && (
+                        <span className="ml-2 text-xs text-blue-600">Cargando opciones...</span>
+                      )}
+                    </label>
                     <select
                       {...register('club_name')}
                       id="club_name"
@@ -1112,8 +1117,8 @@ const RegistroRapidoClient: React.FC = () => {
                           {club}
                         </option>
                       ))}
-                      <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                        ¿Tu club no está aquí? ¡Agrégalo!
+                      <option value="other" className="bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 font-bold">
+                        🏓 ¿Tu club no está aquí? ¡Agrégalo al listado!
                       </option>
                     </select>
                     
@@ -1122,21 +1127,35 @@ const RegistroRapidoClient: React.FC = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                        className="mt-4 p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-lg"
                       >
-                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
-                          Club Personalizado
-                        </h4>
-                        <div className="space-y-3">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="bg-amber-100 rounded-full p-3">
+                            <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-amber-800">
+                              Agregar Club Personalizado
+                            </h4>
+                            <p className="text-sm text-amber-700 font-medium">
+                              Escribe el nombre de tu club y se agregará automáticamente al listado
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
                           <input
                             type="text"
-                            placeholder="Escribe el nombre de tu club"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
+                            placeholder="Ej: Club Deportivo Los Campeones, Academia Spin Masters, etc."
+                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white shadow-sm"
                             onChange={(e) => {
                               setValue('club_name_custom', e.target.value);
                               setClubValidation(null);
                             }}
                           />
+                          
                           <CustomFieldValidator
                             fieldType="club"
                             value={watch('club_name_custom') || ''}
@@ -1146,9 +1165,38 @@ const RegistroRapidoClient: React.FC = () => {
                             onFieldAdded={handleFieldAdded}
                             isVisible={!!watch('club_name_custom')}
                           />
+                          
+                          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <div className="text-xs text-amber-800">
+                                <p className="font-bold mb-1">¿Cómo funciona?</p>
+                                <ul className="space-y-1 font-medium">
+                                  <li>• Escribe el nombre completo de tu club</li>
+                                  <li>• El sistema verificará si ya existe</li>
+                                  <li>• Si es nuevo, podrás agregarlo con un clic</li>
+                                  <li>• Inmediatamente estará disponible para otros usuarios</li>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     )}
+                    
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>
+                        {clubOptions.options.length > 0 
+                          ? `${clubOptions.options.length} clubes disponibles. ¿No encuentras el tuyo? ¡Agrégalo!`
+                          : 'Cargando lista de clubes...'
+                        }
+                      </span>
+                    </p>
                   </div>
 
                   {/* Campo de Ranking */}
@@ -1916,7 +1964,7 @@ const RegistroRapidoClient: React.FC = () => {
                   
                   <p className="text-center text-sm text-gray-600 font-medium mt-4 flex items-center justify-center gap-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                     Tu información está segura y será utilizada únicamente para el censo de tenis de mesa
                   </p>
