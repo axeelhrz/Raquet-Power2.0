@@ -15,6 +15,7 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import AuthHeader from '@/components/auth/AuthHeader';
 import CustomFieldValidator from '@/components/ui/CustomFieldValidator';
 import { validateCustomField, debounce, type FieldType, type ValidationResult } from '@/utils/customFieldValidation';
+import { useDynamicOptions } from '@/hooks/useDynamicOptions';
 
 const registroRapidoSchema = z.object({
   // Información personal básica - ACTUALIZADO: nombres y apellidos separados
@@ -35,10 +36,11 @@ const registroRapidoSchema = z.object({
   
   // Liga - NUEVO CAMPO
   league: z.string().optional(),
+  league_custom: z.string().optional(),
   
   // Club (sin federación)
   club_name: z.string().optional(),
-  custom_club_name: z.string().optional(),
+  club_name_custom: z.string().optional(),
   
   // Ranking - NUEVO CAMPO
   ranking: z.string().optional(),
@@ -294,8 +296,8 @@ const TT_CLUBS_ECUADOR = [
 const POPULAR_BRANDS = [
   'Andro', 'Avalox', 'Butterfly', 'Cornilleau', 'DHS', 'Donic', 'Double Fish', 
   'Dr. Neubauer', 'Friendship', 'Gewo', 'Hurricane', 'Joola', 'Killerspin', 
-  'Nittaku', 'Palio', 'Sanwei', 'Saviga', 'Stiga', 'Tibhar', 'TSP', 
-  'Victas', 'Xiom', 'Yinhe', 'Yasaka'
+  'Nittaku', 'Palio', 'Sanwei', 'Saviga', 'Stiga', 'TSP', 
+  'Tibhar', 'Victas', 'Xiom', 'Yasaka', 'Yinhe'
 ];
 
 // ACTUALIZADO: Modelos populares de raquetas
@@ -311,24 +313,14 @@ const POPULAR_RACKET_MODELS = [
 
 // ACTUALIZADO: Modelos populares de caucho drive
 const POPULAR_DRIVE_MODELS = [
-  'Acuda Blue P1', 'Acuda Blue P3', 'Battle 2', 'Big Dipper', 'Cross 729', 
-  'Dignics 05', 'Dignics 09C', 'Evolution MX-P', 'Evolution MX-S', 
-  'Focus 3', 'Friendship 802-40', 'Hexer HD', 'Hexer Powergrip', 
-  'Hurricane 3', 'Hurricane 8', 'Omega VII Euro', 'Omega VII Pro', 
-  'Rakza 7', 'Rakza 9', 'Rhyzer 48', 'Rhyzer 50', 'Rozena', 
-  'Skyline 3', 'Target Pro GT-H47', 'Target Pro GT-M43', 'Tenergy 05', 
-  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
+  'Acuda Blue P1', 'Bluefire M1', 'Dignics 05', 'Evolution MX-P', 'Fastarc G-1', 
+  'Hurricane 3', 'Rasanter R42', 'Rozena', 'Tenergy 05', 'Xiom Vega Pro'
 ];
 
 // ACTUALIZADO: Modelos populares de caucho back
 const POPULAR_BACKHAND_MODELS = [
-  'Acuda Blue P1', 'Acuda Blue P2', 'Battle 2 Back', 'Cross 729-2', 
-  'Dignics 05', 'Dignics 80', 'Evolution EL-P', 'Evolution MX-P', 
-  'Focus Snipe', 'Friendship 729 Super FX', 'Grass D.TecS', 'Hexer Pips+', 
-  'Hexer Powergrip', 'Hurricane 3 Neo', 'Omega VII Euro', 'Omega VII Pro', 
-  'Plaxon 450', 'Rakza 7 Soft', 'Rakza X', 'Rhyzer 43', 'Rhyzer 48', 
-  'Rozena', 'Target Pro GT-M40', 'Target Pro GT-S43', 'Tenergy 05', 
-  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
+  'Acuda Blue P3', 'Bluefire M3', 'Dignics 80', 'Evolution FX-P', 'Fastarc C-1', 
+  'Hurricane 3 Neo', 'Rasanter R37', 'Rozena', 'Tenergy 80', 'Xiom Vega Asia'
 ];
 
 const RUBBER_COLORS = ['amarillo', 'azul', 'fucsia', 'morado', 'negro', 'rojo', 'verde'];
@@ -358,6 +350,8 @@ interface ValidationStates {
   backhandRubberModel: ValidationResult | null;  // Modelos independientes
   driveRubberHardness: ValidationResult | null;
   backhandRubberHardness: ValidationResult | null;
+  club: ValidationResult | null;
+  league: ValidationResult | null;
 }
 
 const RegistroRapidoClient: React.FC = () => {
@@ -385,6 +379,8 @@ const RegistroRapidoClient: React.FC = () => {
     backhandRubberModel: null,
     driveRubberHardness: null,
     backhandRubberHardness: null,
+    club: null,
+    league: null,
   });
   
   const router = useRouter();
@@ -404,6 +400,27 @@ const RegistroRapidoClient: React.FC = () => {
 
   const watchedProvince = watch('province');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
+
+  // Dynamic options hooks - ACTUALIZADO: Incluir club y league
+  const racketBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
+  const racketModelOptions = useDynamicOptions('racket_model', POPULAR_RACKET_MODELS);
+  const rubberDriveBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
+  const rubberDriveModelOptions = useDynamicOptions('rubber_drive_model', POPULAR_DRIVE_MODELS);
+  const rubberBackBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
+  const rubberBackModelOptions = useDynamicOptions('rubber_back_model', POPULAR_BACKHAND_MODELS);
+  const driveHardnessOptions = useDynamicOptions('drive_rubber_hardness', HARDNESS_LEVELS);
+  const backhandHardnessOptions = useDynamicOptions('backhand_rubber_hardness', HARDNESS_LEVELS);
+
+  // NUEVO: Opciones dinámicas para club y league
+  const clubOptions = useDynamicOptions('club', TT_CLUBS_ECUADOR);
+  const leagueOptions = useDynamicOptions('league', [
+    '593LATM', 'Liga Amateur de Tenis de Mesa', 'LATEM'
+  ]);
+
+  // State for league validation
+  const [leagueValidation, setLeagueValidation] = useState<ValidationResult | null>(null);
+  // State for club validation
+  const [clubValidation, setClubValidation] = useState<ValidationResult | null>(null);
 
   // Handle photo selection
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,6 +461,10 @@ const RegistroRapidoClient: React.FC = () => {
       validationField = 'driveRubberHardness';
     } else if (field.includes('backhand_rubber') && field.includes('hardness')) {
       validationField = 'backhandRubberHardness';
+    } else if (field.includes('club')) {
+      validationField = 'club';
+    } else if (field.includes('league')) {
+      validationField = 'league';
     } else {
       return;
     }
@@ -452,6 +473,38 @@ const RegistroRapidoClient: React.FC = () => {
       ...prev,
       [validationField]: null
     }));
+  };
+
+  // ACTUALIZADO: Callback para cuando se agrega un campo personalizado
+  const handleFieldAdded = (fieldType: FieldType, value: string) => {
+    switch (fieldType) {
+      case 'brand':
+        racketBrandOptions.addOptionToList(value);
+        rubberDriveBrandOptions.addOptionToList(value);
+        rubberBackBrandOptions.addOptionToList(value);
+        break;
+      case 'racket_model':
+        racketModelOptions.addOptionToList(value);
+        break;
+      case 'rubber_drive_model':
+        rubberDriveModelOptions.addOptionToList(value);
+        break;
+      case 'rubber_back_model':
+        rubberBackModelOptions.addOptionToList(value);
+        break;
+      case 'drive_rubber_hardness':
+        driveHardnessOptions.addOptionToList(value);
+        break;
+      case 'backhand_rubber_hardness':
+        backhandHardnessOptions.addOptionToList(value);
+        break;
+      case 'club':  // NUEVO
+        clubOptions.addOptionToList(value);
+        break;
+      case 'league':  // NUEVO
+        leagueOptions.addOptionToList(value);
+        break;
+    }
   };
 
   const onSubmit = async (data: RegistroRapidoFormValues) => {
@@ -470,8 +523,13 @@ const RegistroRapidoClient: React.FC = () => {
       });
 
       // Handle custom club
-      if (data.club_name === 'custom' && data.custom_club_name) {
-        formData.set('club_name', data.custom_club_name);
+      if (data.club_name === 'other' && data.club_name_custom) {
+        formData.set('club_name', data.club_name_custom);
+      }
+
+      // Handle custom league
+      if (data.league === 'other' && data.league_custom) {
+        formData.set('league', data.league_custom);
       }
 
       // Add photo if selected (optional)
@@ -516,7 +574,7 @@ const RegistroRapidoClient: React.FC = () => {
         full_name: `${data.first_name} ${data.second_name || ''} ${data.last_name} ${data.second_last_name || ''}`.replace(/\s+/g, ' ').trim(),
         email: data.email,
         location: `${data.city}, ${data.province}`,
-        club: data.custom_club_name || data.club_name || 'Sin club especificado'
+        club: data.club_name_custom || data.club_name || 'Sin club especificado'
       });
       
       setIsSuccess(true);
@@ -657,7 +715,7 @@ const RegistroRapidoClient: React.FC = () => {
                 className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Volver al Inicio
               </button>
@@ -716,7 +774,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-400">
                         <svg className="h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a2 2 0 00-2 2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         </svg>
                       </div>
                     )}
@@ -725,7 +783,7 @@ const RegistroRapidoClient: React.FC = () => {
                       className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-3 cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </label>
                     <input
@@ -799,8 +857,8 @@ const RegistroRapidoClient: React.FC = () => {
                         type="text"
                         id="last_name"
                         placeholder="Vale"
-                        className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles}`}
-                      />
+                        className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles }`}
+                                              />
                       {errors.last_name && (
                         <p className="text-sm text-red-700 font-semibold">{errors.last_name.message}</p>
                       )}
@@ -966,7 +1024,7 @@ const RegistroRapidoClient: React.FC = () => {
                     Liga y Club
                   </h3>
                   
-                  {/* NUEVO CAMPO: Liga */}
+                  {/* ACTUALIZADO: Renderizar campo de liga con opciones dinámicas */}
                   <div className="space-y-2">
                     <label htmlFor="league" className={labelStyles}>
                       Liga
@@ -975,79 +1033,123 @@ const RegistroRapidoClient: React.FC = () => {
                       {...register('league')}
                       id="league"
                       className={`${inputStyles} ${inputNormalStyles}`}
+                      onChange={(e) => {
+                        setValue('league', e.target.value);
+                        setLeagueValidation(null);
+                      }}
                     >
                       <option value="">Seleccionar liga</option>
-                      <option value="593LATM">593LATM</option>
+                      {leagueOptions.options.map((league) => (
+                        <option key={league} value={league}>
+                          {league}
+                        </option>
+                      ))}
+                      <option value="other" className="bg-amber-50 text-amber-800 font-bold">
+                        ¿Tu liga no está aquí? ¡Agrégala!
+                      </option>
                     </select>
+                    
+                    {watch('league') === 'other' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                      >
+                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
+                          Liga Personalizada
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Escribe el nombre de tu liga"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
+                            onChange={(e) => {
+                              setValue('league_custom', e.target.value);
+                              setLeagueValidation(null);
+                            }}
+                          />
+                          <CustomFieldValidator
+                            fieldType="league"
+                            value={watch('league_custom') || ''}
+                            currentOptions={leagueOptions.options}
+                            onValidationResult={setLeagueValidation}
+                            onSuggestionAccepted={(value) => setValue('league_custom', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={!!watch('league_custom')}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                    
                     <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span>Por el momento solo está disponible la liga 593LATM</span>
+                      <span>Puedes agregar una nueva liga si no está en la lista</span>
                     </p>
                   </div>
                   
+                  {/* ACTUALIZADO: Renderizar campo de club con opciones dinámicas */}
                   <div className="space-y-2">
                     <label htmlFor="club_name" className={labelStyles}>Club</label>
                     <select
                       {...register('club_name')}
                       id="club_name"
+                      className={`${inputStyles} ${inputNormalStyles}`}
                       onChange={(e) => {
-                        setShowCustomClub(e.target.value === 'custom');
-                        if (e.target.value !== 'custom') {
-                          setValue('custom_club_name', '');
+                        setValue('club_name', e.target.value);
+                        setClubValidation(null);
+                        setShowCustomClub(e.target.value === 'other');
+                        if (e.target.value !== 'other') {
+                          setValue('club_name_custom', '');
                         }
                       }}
-                      className={`${inputStyles} ${inputNormalStyles}`}
                     >
                       <option value="">Seleccionar club</option>
-                      {TT_CLUBS_ECUADOR.map((club) => (
+                      {clubOptions.options.map((club) => (
                         <option key={club} value={club}>
                           {club}
                         </option>
                       ))}
-                      <option value="custom" className="bg-amber-50 text-amber-800 font-bold">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          ¿Tu club no está aquí? ¡Agrégalo!
-                        </div>
+                      <option value="other" className="bg-amber-50 text-amber-800 font-bold">
+                        ¿Tu club no está aquí? ¡Agrégalo!
                       </option>
                     </select>
+                    
+                    {watch('club_name') === 'other' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                      >
+                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
+                          Club Personalizado
+                        </h4>
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Escribe el nombre de tu club"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
+                            onChange={(e) => {
+                              setValue('club_name_custom', e.target.value);
+                              setClubValidation(null);
+                            }}
+                          />
+                          <CustomFieldValidator
+                            fieldType="club"
+                            value={watch('club_name_custom') || ''}
+                            currentOptions={clubOptions.options}
+                            onValidationResult={setClubValidation}
+                            onSuggestionAccepted={(value) => setValue('club_name_custom', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={!!watch('club_name_custom')}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
-
-                  {/* Campo personalizado para club */}
-                  {showCustomClub && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-4"
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
-                        </svg>
-                        <h4 className="text-amber-800 font-bold text-sm">Club Personalizado</h4>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-amber-800">
-                          Nombre del Club <span className="text-red-600">*</span>
-                        </label>
-                        <input
-                          {...register('custom_club_name')}
-                          type="text"
-                          placeholder="Ej: Club Deportivo Los Campeones"
-                          className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 hover:border-amber-500 text-gray-900 font-bold placeholder-amber-600"
-                        />
-                        <p className="text-xs text-amber-700 font-medium">
-                          Ingresa el nombre completo de tu club
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
 
                   {/* Campo de Ranking */}
                   <div className="space-y-2">
@@ -1105,11 +1207,11 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Raqueta - Palo - ACTUALIZADO: Opciones independientes para marca y modelo */}
+                {/* Raqueta - Palo - ACTUALIZADO: Usar opciones dinámicas */}
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                     <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Raqueta - Palo
                   </h3>
@@ -1119,13 +1221,13 @@ const RegistroRapidoClient: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="bg-blue-100 rounded-full p-2">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div>
                         <h4 className="text-blue-900 font-bold text-sm flex items-center gap-1">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           ¿No encuentras tu marca o modelo?
                         </h4>
@@ -1137,9 +1239,14 @@ const RegistroRapidoClient: React.FC = () => {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Campo de Marca con opción personalizada independiente */}
+                    {/* Campo de Marca con opciones dinámicas */}
                     <div className="space-y-2">
-                      <label className="block text-sm font-bold text-gray-800 mb-1">Marca</label>
+                      <label className="block text-sm font-bold text-gray-800 mb-1">
+                        Marca
+                        {racketBrandOptions.isLoading && (
+                          <span className="ml-2 text-xs text-blue-600">Cargando opciones...</span>
+                        )}
+                      </label>
                       <select
                         {...register('racket_brand')}
                         onChange={(e) => {
@@ -1152,7 +1259,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
-                        {POPULAR_BRANDS.map((brand) => (
+                        {racketBrandOptions.options.map((brand) => (
                           <option key={brand} value={brand}>
                             {brand}
                           </option>
@@ -1169,9 +1276,14 @@ const RegistroRapidoClient: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Campo de Modelo con opción personalizada independiente */}
+                    {/* Campo de Modelo con opciones dinámicas */}
                     <div className="space-y-2">
-                      <label htmlFor="racket_model" className={labelStyles}>Modelo</label>
+                      <label htmlFor="racket_model" className={labelStyles}>
+                        Modelo
+                        {racketModelOptions.isLoading && (
+                          <span className="ml-2 text-xs text-blue-600">Cargando opciones...</span>
+                        )}
+                      </label>
                       <select
                         {...register('racket_model')}
                         id="racket_model"
@@ -1185,7 +1297,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
-                        {POPULAR_RACKET_MODELS.map((model) => (
+                        {racketModelOptions.options.map((model) => (
                           <option key={model} value={model}>
                             {model}
                           </option>
@@ -1222,7 +1334,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_racket_brand') || ''}
                             onValidationResult={(result) => handleValidationResult('brand', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_brand', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomRacketBrand}
+                            currentOptions={racketBrandOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1251,7 +1365,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_racket_model') || ''}
                             onValidationResult={(result) => handleValidationResult('racketModel', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_model', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomRacketModel}
+                            currentOptions={racketModelOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1282,7 +1398,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
-                        {POPULAR_BRANDS.map((brand) => (
+                        {rubberDriveBrandOptions.options.map((brand) => (
                           <option key={brand} value={brand}>
                             {brand}
                           </option>
@@ -1315,7 +1431,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
-                        {POPULAR_DRIVE_MODELS.map((model) => (
+                        {rubberDriveModelOptions.options.map((model) => (
                           <option key={model} value={model}>
                             {model}
                           </option>
@@ -1392,7 +1508,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar hardness</option>
-                        {HARDNESS_LEVELS.map((hardness) => (
+                        {driveHardnessOptions.options.map((hardness) => (
                           <option key={hardness} value={hardness}>
                             {hardness}
                           </option>
@@ -1429,7 +1545,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_drive_rubber_brand') || ''}
                             onValidationResult={(result) => handleValidationResult('brand', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_brand', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomDriveRubberBrand}
+                            currentOptions={rubberDriveBrandOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1454,11 +1572,13 @@ const RegistroRapidoClient: React.FC = () => {
                             className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600"
                           />
                           <CustomFieldValidator
-                            fieldType="drive_rubber_model"
+                            fieldType="rubber_drive_model"
                             value={watch('custom_drive_rubber_model') || ''}
                             onValidationResult={(result) => handleValidationResult('driveRubberModel', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_model', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomDriveRubberModel}
+                            currentOptions={rubberDriveModelOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1487,7 +1607,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_drive_rubber_hardness') || ''}
                             onValidationResult={(result) => handleValidationResult('driveRubberHardness', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_hardness', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomDriveHardness}
+                            currentOptions={driveHardnessOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1518,7 +1640,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className="w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-bold placeholder-gray-600 bg-white hover:border-gray-400 border-gray-300"
                       >
                         <option value="">Seleccionar marca</option>
-                        {POPULAR_BRANDS.map((brand) => (
+                        {rubberBackBrandOptions.options.map((brand) => (
                           <option key={brand} value={brand}>
                             {brand}
                           </option>
@@ -1551,7 +1673,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar modelo</option>
-                        {POPULAR_BACKHAND_MODELS.map((model) => (
+                        {rubberBackModelOptions.options.map((model) => (
                           <option key={model} value={model}>
                             {model}
                           </option>
@@ -1628,7 +1750,7 @@ const RegistroRapidoClient: React.FC = () => {
                         className={`${inputStyles} ${inputNormalStyles}`}
                       >
                         <option value="">Seleccionar hardness</option>
-                        {HARDNESS_LEVELS.map((hardness) => (
+                        {backhandHardnessOptions.options.map((hardness) => (
                           <option key={hardness} value={hardness}>
                             {hardness}
                           </option>
@@ -1665,7 +1787,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_backhand_rubber_brand') || ''}
                             onValidationResult={(result) => handleValidationResult('brand', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_brand', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomBackhandRubberBrand}
+                            currentOptions={rubberBackBrandOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1690,11 +1814,13 @@ const RegistroRapidoClient: React.FC = () => {
                             className="w-full px-4 py-3 border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600"
                           />
                           <CustomFieldValidator
-                            fieldType="backhand_rubber_model"
+                            fieldType="rubber_back_model"
                             value={watch('custom_backhand_rubber_model') || ''}
                             onValidationResult={(result) => handleValidationResult('backhandRubberModel', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_model', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomBackhandRubberModel}
+                            currentOptions={rubberBackModelOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1723,7 +1849,9 @@ const RegistroRapidoClient: React.FC = () => {
                             value={watch('custom_backhand_rubber_hardness') || ''}
                             onValidationResult={(result) => handleValidationResult('backhandRubberHardness', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_hardness', value)}
+                            onFieldAdded={handleFieldAdded}
                             isVisible={showCustomBackhandHardness}
+                            currentOptions={backhandHardnessOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1748,7 +1876,7 @@ const RegistroRapidoClient: React.FC = () => {
                     />
                     <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>Espacio opcional para cualquier información adicional</span>
                     </p>

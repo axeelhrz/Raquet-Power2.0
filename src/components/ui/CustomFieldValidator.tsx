@@ -9,6 +9,7 @@ interface CustomFieldValidatorProps {
   onSuggestionAccepted: (suggestedValue: string) => void;
   onFieldAdded?: (fieldType: FieldType, value: string) => void;
   isVisible: boolean;
+  currentOptions?: string[]; // NUEVO: Lista actual de opciones en el desplegable
 }
 
 const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
@@ -17,11 +18,53 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   onValidationResult,
   onSuggestionAccepted,
   onFieldAdded,
-  isVisible
+  isVisible,
+  currentOptions = []
 }) => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Función para validar contra la lista actual
+  const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
+    if (!inputValue || inputValue.trim().length < 2) return null;
+    
+    const normalizedInput = inputValue.toLowerCase().trim();
+    
+    // Buscar coincidencia exacta en la lista actual
+    const exactMatch = currentOptions.find(option => 
+      option.toLowerCase().trim() === normalizedInput
+    );
+    
+    if (exactMatch) {
+      return {
+        is_duplicate: true,
+        suggested_value: exactMatch,
+        message: `"${exactMatch}" ya está disponible en la lista`,
+        match_type: 'exact',
+        all_suggestions: [exactMatch]
+      };
+    }
+    
+    // Buscar coincidencias parciales en la lista actual
+    const partialMatches = currentOptions.filter(option =>
+      option.toLowerCase().includes(normalizedInput) && 
+      option.toLowerCase() !== normalizedInput
+    );
+    
+    if (partialMatches.length > 0) {
+      return {
+        is_duplicate: false,
+        suggested_value: partialMatches[0],
+        message: `¿Quisiste decir "${partialMatches[0]}"?`,
+        match_type: 'partial',
+        all_suggestions: partialMatches.slice(0, 5)
+      };
+    }
+    
+    return null;
+  };
 
   // Función debounced para validar
   const debouncedValidate = debounce(async (...args: unknown[]) => {
@@ -33,7 +76,19 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     }
 
     setIsValidating(true);
+    
     try {
+      // PRIMERO: Validar contra la lista actual (más rápido)
+      const localValidation = validateAgainstCurrentOptions(value);
+      
+      if (localValidation) {
+        setValidationResult(localValidation);
+        onValidationResult(localValidation);
+        setIsValidating(false);
+        return;
+      }
+      
+      // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
       const result = await validateCustomField(fieldType, value);
       setValidationResult(result);
       onValidationResult(result);
@@ -44,7 +99,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     } finally {
       setIsValidating(false);
     }
-  }, 500);
+  }, 800);
 
   // Validar cuando cambie el valor
   useEffect(() => {
@@ -54,10 +109,12 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       setValidationResult(null);
       onValidationResult(null);
     }
-  }, [fieldType, value, isVisible]);
+    // Limpiar mensaje de éxito cuando cambie el valor
+    setSuccessMessage(null);
+  }, [fieldType, value, isVisible, currentOptions]);
 
-  // NUEVO: Función para agregar campo personalizado
-  const handleAddField = async () => {
+  // Función para agregar campo cuando el usuario confirma
+  const handleConfirmAdd = async () => {
     if (!value || value.trim().length < 2) return;
 
     setIsAdding(true);
@@ -69,12 +126,19 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         setValidationResult(null);
         onValidationResult(null);
         
-        // Notificar al componente padre
+        // Mostrar mensaje de éxito
+        setSuccessMessage(`"${value}" se agregó exitosamente al listado`);
+        
+        // Notificar al componente padre para actualizar el desplegable
         if (onFieldAdded) {
           onFieldAdded(fieldType, value);
         }
         
-        // Mostrar mensaje de éxito
+        // Limpiar mensaje de éxito después de 4 segundos
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 4000);
+        
         console.log('Campo agregado:', result.message);
       } else {
         console.error('Error al agregar campo:', result?.message);
@@ -89,9 +153,10 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const handleAcceptSuggestion = (suggestion: string) => {
     onSuggestionAccepted(suggestion);
     setValidationResult(null);
+    setSuccessMessage(null);
   };
 
-  if (!isVisible || (!validationResult && !isValidating)) {
+  if (!isVisible || (!validationResult && !isValidating && !successMessage)) {
     return null;
   }
 
@@ -103,10 +168,39 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         exit={{ opacity: 0, height: 0 }}
         className="mt-2"
       >
+        {/* Mensaje de éxito */}
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg mb-2"
+          >
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+              <p className="text-xs text-green-600 mt-1">
+                Ya está disponible en el desplegable para su selección
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {isValidating && (
           <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
             <span className="text-sm text-blue-700 font-medium">Validando...</span>
+          </div>
+        )}
+
+        {isAdding && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="animate-spin w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
+            <span className="text-sm text-green-700 font-medium">Agregando al listado...</span>
           </div>
         )}
 
@@ -146,70 +240,68 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                   {validationResult.message}
                 </p>
 
-                {/* Botones de acción */}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {validationResult.is_duplicate && (
-                    <>
-                      <button
-                        onClick={() => handleAcceptSuggestion(validationResult.suggested_value)}
-                        className="px-3 py-1 bg-yellow-600 text-white text-xs rounded-md hover:bg-yellow-700 transition-colors"
-                      >
-                        Usar &quot;{validationResult.suggested_value}&quot;
-                      </button>
-                      <button
-                        onClick={handleAddField}
-                        disabled={isAdding}
-                        className="px-3 py-1 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50"
-                      >
-                        {isAdding ? 'Agregando...' : 'Agregar de todas formas'}
-                      </button>
-                    </>
-                  )}
-
-                  {validationResult.match_type === 'partial' && (
-                    <>
-                      <button
-                        onClick={() => handleAcceptSuggestion(validationResult.suggested_value)}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        Usar &quot;{validationResult.suggested_value}&quot;
-                      </button>
-                      <button
-                        onClick={handleAddField}
-                        disabled={isAdding}
-                        className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                      >
-                        {isAdding ? 'Agregando...' : 'Agregar nuevo'}
-                      </button>
-                    </>
-                  )}
-
-                  {!validationResult.is_duplicate && validationResult.match_type !== 'partial' && (
-                    <button
-                      onClick={handleAddField}
-                      disabled={isAdding}
-                      className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                    >
-                      {isAdding ? 'Agregando...' : 'Agregar a la base de datos'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Sugerencias adicionales */}
-                {validationResult.all_suggestions && validationResult.all_suggestions.length > 1 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-600 font-medium mb-1">Otras opciones similares:</p>
+                {/* Mostrar sugerencias para duplicados y coincidencias parciales */}
+                {(validationResult.is_duplicate || validationResult.match_type === 'partial') && (
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      {validationResult.is_duplicate 
+                        ? "Esta opción ya está disponible:"
+                        : "¿Quisiste decir alguna de estas opciones?"
+                      }
+                    </p>
                     <div className="flex flex-wrap gap-1">
-                      {validationResult.all_suggestions.slice(1, 4).map((suggestion, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleAcceptSuggestion(suggestion)}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
+                      <button
+                        onClick={() => handleAcceptSuggestion(validationResult.suggested_value)}
+                        className={`px-3 py-1 text-xs rounded-md transition-colors font-medium ${
+                          validationResult.is_duplicate
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        }`}
+                      >
+                        {validationResult.suggested_value}
+                      </button>
+                      
+                      {/* Sugerencias adicionales */}
+                      {validationResult.all_suggestions && validationResult.all_suggestions.length > 1 && 
+                        validationResult.all_suggestions.slice(1, 3).map((suggestion, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleAcceptSuggestion(suggestion)}
+                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))
+                      }
                     </div>
+                  </div>
+                )}
+
+                {/* Botón de confirmación para valores únicos */}
+                {!validationResult.is_duplicate && validationResult.match_type !== 'partial' && (
+                  <div className="mt-3">
+                    <button
+                      onClick={handleConfirmAdd}
+                      disabled={isAdding}
+                      className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+                    >
+                      {isAdding ? (
+                        <>
+                          <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                          Agregando...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Agregar "{value}" al listado
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-green-600 mt-1 font-medium">
+                      Haz clic para confirmar y agregar esta opción
+                    </p>
                   </div>
                 )}
               </div>
