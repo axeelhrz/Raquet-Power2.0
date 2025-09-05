@@ -338,7 +338,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                       ) : (
                         <>
                           {getFieldIcon(fieldType)}
-                          Agregar "{value}" al listado
+                          Agregar &quot;{value}&quot; al listado
                         </>
                       )}
                     </button>
