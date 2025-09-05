@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { validateCustomField, addCustomField, debounce, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
+import { validateCustomField, addCustomField, debounce, getFieldTypeDisplayName, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
 
 interface CustomFieldValidatorProps {
   fieldType: FieldType;
@@ -9,7 +9,7 @@ interface CustomFieldValidatorProps {
   onSuggestionAccepted: (suggestedValue: string) => void;
   onFieldAdded?: (fieldType: FieldType, value: string) => void;
   isVisible: boolean;
-  currentOptions?: string[]; // NUEVO: Lista actual de opciones en el desplegable
+  currentOptions?: string[]; // Lista actual de opciones en el desplegable
 }
 
 const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
@@ -25,6 +25,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showAddButton, setShowAddButton] = useState(false);
 
   // Función para validar contra la lista actual
   const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
@@ -74,10 +75,12 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     if (!value || typeof value !== 'string' || value.trim().length < 2) {
       setValidationResult(null);
       onValidationResult(null);
+      setShowAddButton(false);
       return;
     }
 
     setIsValidating(true);
+    setShowAddButton(false);
     
     try {
       // PRIMERO: Validar contra la lista actual (más rápido)
@@ -92,12 +95,22 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
       const result = await validateCustomField(fieldType, value);
-      setValidationResult(result);
-      onValidationResult(result);
+      
+      if (result) {
+        setValidationResult(result);
+        onValidationResult(result);
+      } else {
+        // TERCERO: Si no existe en ningún lado, mostrar botón para agregar
+        setValidationResult(null);
+        onValidationResult(null);
+        setShowAddButton(true);
+      }
     } catch (error) {
       console.error('Error validating field:', error);
+      // En caso de error, asumir que no existe y mostrar botón para agregar
       setValidationResult(null);
       onValidationResult(null);
+      setShowAddButton(true);
     } finally {
       setIsValidating(false);
     }
@@ -110,6 +123,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     } else {
       setValidationResult(null);
       onValidationResult(null);
+      setShowAddButton(false);
     }
     // Limpiar mensaje de éxito cuando cambie el valor
     setSuccessMessage(null);
@@ -127,6 +141,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         // Campo agregado exitosamente
         setValidationResult(null);
         onValidationResult(null);
+        setShowAddButton(false);
         
         // Mostrar mensaje de éxito
         setSuccessMessage(`"${value}" se agregó exitosamente al listado`);
@@ -156,9 +171,40 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     onSuggestionAccepted(suggestion);
     setValidationResult(null);
     setSuccessMessage(null);
+    setShowAddButton(false);
   };
 
-  if (!isVisible || (!validationResult && !isValidating && !successMessage)) {
+  // Obtener icono según el tipo de campo
+  const getFieldIcon = (fieldType: FieldType) => {
+    switch (fieldType) {
+      case 'club':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        );
+      case 'league':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'brand':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+        );
+    }
+  };
+
+  if (!isVisible || (!validationResult && !isValidating && !successMessage && !showAddButton)) {
     return null;
   }
 
@@ -176,16 +222,16 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg mb-2"
+            className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl mb-3 shadow-sm"
           >
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 bg-green-100 rounded-full p-2">
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-green-800">{successMessage}</p>
-              <p className="text-xs text-green-600 mt-1">
+              <p className="text-sm font-bold text-green-800">{successMessage}</p>
+              <p className="text-xs text-green-600 mt-1 font-medium">
                 Ya está disponible en el desplegable para su selección
               </p>
             </div>
@@ -193,29 +239,29 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         )}
 
         {isValidating && (
-          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-            <span className="text-sm text-blue-700 font-medium">Validando...</span>
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
+            <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+            <span className="text-sm text-blue-700 font-bold">Validando...</span>
           </div>
         )}
 
         {isAdding && (
-          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="animate-spin w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
-            <span className="text-sm text-green-700 font-medium">Agregando al listado...</span>
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm">
+            <div className="animate-spin w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full"></div>
+            <span className="text-sm text-green-700 font-bold">Agregando al listado...</span>
           </div>
         )}
 
         {validationResult && (
-          <div className={`p-3 rounded-lg border ${
+          <div className={`p-4 rounded-xl border-2 shadow-sm ${
             validationResult.is_duplicate 
-              ? 'bg-yellow-50 border-yellow-200' 
+              ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' 
               : validationResult.match_type === 'partial'
-              ? 'bg-blue-50 border-blue-200'
-              : 'bg-green-50 border-green-200'
+              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+              : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
           }`}>
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 mt-0.5">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5 bg-white rounded-full p-2">
                 {validationResult.is_duplicate ? (
                   <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -232,7 +278,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
               </div>
               
               <div className="flex-1">
-                <p className={`text-sm font-medium ${
+                <p className={`text-sm font-bold ${
                   validationResult.is_duplicate 
                     ? 'text-yellow-800' 
                     : validationResult.match_type === 'partial'
@@ -245,19 +291,19 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                 {/* Mostrar sugerencias para duplicados y coincidencias parciales */}
                 {(validationResult.is_duplicate || validationResult.match_type === 'partial') && (
                   <div className="mt-3">
-                    <p className="text-xs text-gray-600 font-medium mb-2">
+                    <p className="text-xs text-gray-600 font-bold mb-2">
                       {validationResult.is_duplicate 
                         ? "Esta opción ya está disponible:"
                         : "¿Quisiste decir alguna de estas opciones?"
                       }
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => handleAcceptSuggestion(validationResult.suggested_value)}
-                        className={`px-3 py-1 text-xs rounded-md transition-colors font-medium ${
+                        className={`px-3 py-2 text-xs rounded-lg transition-all font-bold shadow-sm hover:shadow-md ${
                           validationResult.is_duplicate
-                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-300'
                         }`}
                       >
                         {validationResult.suggested_value}
@@ -269,7 +315,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                           <button
                             key={index}
                             onClick={() => handleAcceptSuggestion(suggestion)}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors"
+                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md hover:bg-gray-200 transition-colors border border-gray-300 font-medium"
                           >
                             {suggestion}
                           </button>
@@ -278,37 +324,51 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                     </div>
                   </div>
                 )}
-
-                {/* Botón de confirmación para valores únicos */}
-                {!validationResult.is_duplicate && validationResult.match_type !== 'partial' && (
-                  <div className="mt-3">
-                    <button
-                      onClick={handleConfirmAdd}
-                      disabled={isAdding}
-                      className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
-                    >
-                      {isAdding ? (
-                        <>
-                          <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
-                          Agregando...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Agregar &quot;{value}&quot; al listado
-                        </>
-                      )}
-                    </button>
-                    <p className="text-xs text-green-600 mt-1 font-medium">
-                      Haz clic para confirmar y agregar esta opción
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+        )}
+
+        {/* Botón para agregar cuando no existe */}
+        {showAddButton && !isAdding && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 bg-green-100 rounded-full p-2">
+                {getFieldIcon(fieldType)}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-green-800 mb-2">
+                  ¡Perfecto! "{value}" no existe en el listado
+                </p>
+                <p className="text-xs text-green-600 font-medium mb-3">
+                  Puedes agregarlo para que esté disponible para todos los usuarios
+                </p>
+                <button
+                  onClick={handleConfirmAdd}
+                  disabled={isAdding}
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm rounded-lg hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold flex items-center gap-2 shadow-md hover:shadow-lg"
+                >
+                  {isAdding ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Agregando...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Agregar "{value}" al listado
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </motion.div>
     </AnimatePresence>
