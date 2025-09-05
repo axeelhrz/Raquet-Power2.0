@@ -26,6 +26,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddButton, setShowAddButton] = useState(false);
+  const [hasValidated, setHasValidated] = useState(false);
 
   // Función para validar contra la lista actual
   const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
@@ -117,23 +118,34 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       setValidationResult(null);
       onValidationResult(null);
       setShowAddButton(true);
+      setHasValidated(true); // AGREGAR ESTA LÍNEA
+
     } finally {
       setIsValidating(false);
     }
   }, 800);
 
+// Resetear validación cuando cambia el valor
+useEffect(() => {
+  setHasValidated(false);
+}, [value]);
+
   // Validar cuando cambie el valor
-  useEffect(() => {
-    if (isVisible && value && value.trim().length >= 2) {
+useEffect(() => {
+  if (isVisible && value && value.trim().length >= 2) {
+    if (!hasValidated) {
       debouncedValidate(fieldType, value);
-    } else {
-      setValidationResult(null);
-      onValidationResult(null);
-      setShowAddButton(false);
+      setHasValidated(true);
     }
-    // Limpiar mensaje de éxito cuando cambie el valor
-    setSuccessMessage(null);
-  }, [fieldType, value, isVisible, currentOptions]);
+  } else {
+    setValidationResult(null);
+    onValidationResult(null);
+    setShowAddButton(false);
+    setHasValidated(false);
+  }
+  // Limpiar mensaje de éxito cuando cambie el valor
+  setSuccessMessage(null);
+}, [fieldType, value, isVisible]); // Remover currentOptions de las dependencias
 
   // Función para agregar campo cuando el usuario confirma
   const handleConfirmAdd = async () => {
