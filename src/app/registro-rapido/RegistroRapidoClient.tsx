@@ -1063,7 +1063,7 @@ const RegistroRapidoClient: React.FC = () => {
                           <input
                             type="text"
                             placeholder="Escribe el nombre de tu liga"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600"
+                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
                             onChange={(e) => {
                               setValue('league_custom', e.target.value);
                               setLeagueValidation(null);
@@ -1261,7 +1261,7 @@ const RegistroRapidoClient: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Campo de Marca con opciones dinámicas */}
                     <div className="space-y-2">
                       <label className="block text-sm font-bold text-gray-800 mb-1">
@@ -1333,93 +1333,93 @@ const RegistroRapidoClient: React.FC = () => {
                         Modelos populares de raquetas
                       </p>
                     </div>
-
-                    {/* Campo personalizado para marca */}
-                    {showCustomRacketBrand && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-amber-100 rounded-full p-2">
-                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-bold text-amber-800">
-                              🏷️ Agregar Marca al Listado
-                            </h4>
-                            <p className="text-amber-700 text-sm font-medium">
-                              Escribe el nombre de la marca y agrégala para que otros también puedan seleccionarla
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <input
-                            {...register('custom_racket_brand')}
-                            type="text"
-                            placeholder="Escribe la marca de tu raqueta"
-                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
-                          />
-                          <CustomFieldValidator
-                            fieldType="brand"
-                            value={watch('custom_racket_brand') || ''}
-                            onValidationResult={(result) => handleValidationResult('brand', result)}
-                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_brand', value)}
-                            onFieldAdded={handleFieldAdded}
-                            isVisible={showCustomRacketBrand}
-                            currentOptions={racketBrandOptions.options}
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Campo personalizado para modelo */}
-                    {showCustomRacketModel && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-green-100 rounded-full p-2">
-                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-bold text-green-800">
-                              🎯 Agregar Modelo al Listado
-                            </h4>
-                            <p className="text-green-700 text-sm font-medium">
-                              Escribe el modelo de tu raqueta y agrégalo para que otros también puedan seleccionarlo
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <input
-                            {...register('custom_racket_model')}
-                            type="text"
-                            placeholder="Escribe el modelo de tu raqueta"
-                            className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600 bg-white"
-                          />
-                          <CustomFieldValidator
-                            fieldType="racket_model"
-                            value={watch('custom_racket_model') || ''}
-                            onValidationResult={(result) => handleValidationResult('racketModel', result)}
-                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_model', value)}
-                            onFieldAdded={handleFieldAdded}
-                            isVisible={showCustomRacketModel}
-                            currentOptions={racketModelOptions.options}
-                          />
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
+
+                  {/* Campo personalizado para marca - CORREGIDO: Fuera del grid, debajo de las opciones */}
+                  {showCustomRacketBrand && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="bg-amber-100 rounded-full p-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-amber-800">
+                            🏷️ Agregar Marca al Listado
+                          </h4>
+                          <p className="text-amber-700 text-sm font-medium">
+                            Escribe el nombre de la marca y agrégala para que otros también puedan seleccionarla
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <input
+                          {...register('custom_racket_brand')}
+                          type="text"
+                          placeholder="Escribe la marca de tu raqueta"
+                          className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
+                        />
+                        <CustomFieldValidator
+                          fieldType="brand"
+                          value={watch('custom_racket_brand') || ''}
+                          onValidationResult={(result) => handleValidationResult('brand', result)}
+                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_brand', value)}
+                          onFieldAdded={handleFieldAdded}
+                          isVisible={showCustomRacketBrand}
+                          currentOptions={racketBrandOptions.options}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Campo personalizado para modelo - CORREGIDO: Fuera del grid, debajo de las opciones */}
+                  {showCustomRacketModel && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="bg-green-100 rounded-full p-2">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-green-800">
+                            🎯 Agregar Modelo al Listado
+                          </h4>
+                          <p className="text-green-700 text-sm font-medium">
+                            Escribe el modelo de tu raqueta y agrégalo para que otros también puedan seleccionarlo
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <input
+                          {...register('custom_racket_model')}
+                          type="text"
+                          placeholder="Escribe el modelo de tu raqueta"
+                          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600 bg-white"
+                        />
+                        <CustomFieldValidator
+                          fieldType="racket_model"
+                          value={watch('custom_racket_model') || ''}
+                          onValidationResult={(result) => handleValidationResult('racketModel', result)}
+                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_racket_model', value)}
+                          onFieldAdded={handleFieldAdded}
+                          isVisible={showCustomRacketModel}
+                          currentOptions={racketModelOptions.options}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
                 </motion.div>
 
                 {/* Caucho del Drive - ACTUALIZADO: Opciones independientes para marca y modelo */}
