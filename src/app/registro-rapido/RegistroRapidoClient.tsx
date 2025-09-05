@@ -1073,8 +1073,8 @@ const RegistroRapidoClient: React.FC = () => {
                             fieldType="league"
                             value={watch('league_custom') || ''}
                             currentOptions={leagueOptions.options}
-                            onValidationResult={setLeagueValidation}
-                            onSuggestionAccepted={(value) => setValue('league_custom', value)}
+                            onValidationResult={(result) => handleValidationResult('league', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('league_custom', value)}
                             onFieldAdded={handleFieldAdded}
                             isVisible={!!watch('league_custom')}
                           />
@@ -1141,8 +1141,8 @@ const RegistroRapidoClient: React.FC = () => {
                             fieldType="club"
                             value={watch('club_name_custom') || ''}
                             currentOptions={clubOptions.options}
-                            onValidationResult={setClubValidation}
-                            onSuggestionAccepted={(value) => setValue('club_name_custom', value)}
+                            onValidationResult={(result) => handleValidationResult('club', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('club_name_custom', value)}
                             onFieldAdded={handleFieldAdded}
                             isVisible={!!watch('club_name_custom')}
                           />
