@@ -43,6 +43,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         suggested_value: exactMatch,
         message: `"${exactMatch}" ya está disponible en la lista`,
         match_type: 'exact',
+        source: 'custom_fields',
         all_suggestions: [exactMatch]
       };
     }
@@ -59,6 +60,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         suggested_value: partialMatches[0],
         message: `¿Quisiste decir "${partialMatches[0]}"?`,
         match_type: 'partial',
+        source: 'custom_fields',
         all_suggestions: partialMatches.slice(0, 5)
       };
     }
@@ -295,7 +297,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                           </svg>
-                          Agregar "{value}" al listado
+                          Agregar &quot;{value}&quot; al listado
                         </>
                       )}
                     </button>
