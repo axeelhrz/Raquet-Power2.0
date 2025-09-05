@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { validateCustomField, addCustomField, debounce, type FieldType, type ValidationResult, type AddFieldResult } from '@/utils/customFieldValidation';
 
@@ -25,9 +25,14 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Referencias para evitar validaciones innecesarias
+  const lastValidatedValue = useRef<string>('');
+  const lastValidatedFieldType = useRef<FieldType | null>(null);
+  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Función para validar contra la lista actual
-  const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
+  const validateAgainstCurrentOptions = useCallback((inputValue: string): ValidationResult | null => {
     if (!inputValue || inputValue.trim().length < 2) return null;
     
     const normalizedInput = inputValue.toLowerCase().trim();
@@ -66,14 +71,19 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     }
     
     return null;
-  };
+  }, [currentOptions]);
 
-  // Función debounced para validar
-  const debouncedValidate = debounce(async (...args: unknown[]) => {
-    const [fieldType, value] = args as [FieldType, string];
-    if (!value || typeof value !== 'string' || value.trim().length < 2) {
+  // Función para realizar validación completa
+  const performValidation = useCallback(async (fieldType: FieldType, inputValue: string) => {
+    // Evitar validaciones duplicadas
+    if (lastValidatedValue.current === inputValue && lastValidatedFieldType.current === fieldType) {
+      return;
+    }
+
+    if (!inputValue || inputValue.trim().length < 2) {
       setValidationResult(null);
       onValidationResult(null);
+      setIsValidating(false);
       return;
     }
 
@@ -81,19 +91,23 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     
     try {
       // PRIMERO: Validar contra la lista actual (más rápido)
-      const localValidation = validateAgainstCurrentOptions(value);
+      const localValidation = validateAgainstCurrentOptions(inputValue);
       
       if (localValidation) {
         setValidationResult(localValidation);
         onValidationResult(localValidation);
+        lastValidatedValue.current = inputValue;
+        lastValidatedFieldType.current = fieldType;
         setIsValidating(false);
         return;
       }
       
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
-      const result = await validateCustomField(fieldType, value);
+      const result = await validateCustomField(fieldType, inputValue);
       setValidationResult(result);
       onValidationResult(result);
+      lastValidatedValue.current = inputValue;
+      lastValidatedFieldType.current = fieldType;
     } catch (error) {
       console.error('Error validating field:', error);
       setValidationResult(null);
@@ -101,23 +115,54 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     } finally {
       setIsValidating(false);
     }
-  }, 800);
+  }, [fieldType, validateAgainstCurrentOptions, onValidationResult]);
 
-  // Validar cuando cambie el valor
+  // Función debounced para validar
+  const debouncedValidate = useCallback(
+    debounce((...args: unknown[]) => {
+      const [fieldType, value] = args as [FieldType, string];
+      performValidation(fieldType, value);
+    }, 800),
+    [performValidation]
+  );
+
+  // Validar cuando cambie el valor o el tipo de campo
   useEffect(() => {
-    if (isVisible && value) {
-      debouncedValidate(fieldType, value);
+    // Limpiar timeout anterior
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    if (isVisible && value && value.trim().length >= 2) {
+      // Solo validar si el valor o el tipo de campo han cambiado
+      if (lastValidatedValue.current !== value || lastValidatedFieldType.current !== fieldType) {
+        debouncedValidate(fieldType, value);
+      }
     } else {
+      // Limpiar estado si no hay valor o no es visible
       setValidationResult(null);
       onValidationResult(null);
+      setIsValidating(false);
+      lastValidatedValue.current = '';
+      lastValidatedFieldType.current = null;
     }
+    
     // Limpiar mensaje de éxito cuando cambie el valor
-    setSuccessMessage(null);
-  }, [fieldType, value, isVisible, currentOptions]);
+    if (successMessage && value !== lastValidatedValue.current) {
+      setSuccessMessage(null);
+    }
+
+    // Cleanup
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, [fieldType, value, isVisible, debouncedValidate, successMessage, onValidationResult]);
 
   // Función para agregar campo cuando el usuario confirma
   const handleConfirmAdd = async () => {
-    if (!value || value.trim().length < 2) return;
+    if (!value || value.trim().length < 2 || isAdding) return;
 
     setIsAdding(true);
     try {
@@ -135,6 +180,10 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         if (onFieldAdded) {
           onFieldAdded(fieldType, value);
         }
+        
+        // Actualizar referencias para evitar re-validaciones
+        lastValidatedValue.current = value;
+        lastValidatedFieldType.current = fieldType;
         
         // Limpiar mensaje de éxito después de 4 segundos
         setTimeout(() => {
@@ -156,6 +205,9 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     onSuggestionAccepted(suggestion);
     setValidationResult(null);
     setSuccessMessage(null);
+    // Limpiar referencias para permitir nueva validación si es necesario
+    lastValidatedValue.current = '';
+    lastValidatedFieldType.current = null;
   };
 
   if (!isVisible || (!validationResult && !isValidating && !successMessage)) {
@@ -206,7 +258,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
           </div>
         )}
 
-        {validationResult && (
+        {validationResult && !isValidating && (
           <div className={`p-3 rounded-lg border ${
             validationResult.is_duplicate 
               ? 'bg-yellow-50 border-yellow-200' 
