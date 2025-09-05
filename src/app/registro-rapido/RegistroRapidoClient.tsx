@@ -656,7 +656,7 @@ const RegistroRapidoClient: React.FC = () => {
           >
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l-7 7a2 2 0 010 2.828l7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l-7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
             </div>
             
@@ -1066,7 +1066,7 @@ const RegistroRapidoClient: React.FC = () => {
                         <div className="flex items-center gap-3 mb-3">
                           <div className="bg-amber-100 rounded-full p-2">
                             <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                           </div>
                           <div>
@@ -1091,7 +1091,7 @@ const RegistroRapidoClient: React.FC = () => {
                             onValidationResult={(result) => handleValidationResult('league', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('league_custom', value)}
                             onFieldAdded={handleFieldAdded}
-                            isVisible={showCustomLeague}
+                            isVisible={!!watch('league_custom')}
                             currentOptions={leagueOptions.options}
                           />
                         </div>
@@ -1121,7 +1121,7 @@ const RegistroRapidoClient: React.FC = () => {
                       onChange={(e) => {
                         setValue('club_name', e.target.value);
                         setClubValidation(null);
-                        const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                        const isCustom = e.target.value === 'other';
                         setShowCustomClub(isCustom);
                         if (!isCustom) {
                           setValue('club_name_custom', '');
@@ -1294,7 +1294,7 @@ const RegistroRapidoClient: React.FC = () => {
                       <select
                         {...register('racket_brand')}
                         onChange={(e) => {
-                          const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustom = e.target.value === 'other';
                           setShowCustomRacketBrand(isCustom);
                           if (!isCustom) {
                             setValue('custom_racket_brand', '');
@@ -1332,7 +1332,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('racket_model')}
                         id="racket_model"
                         onChange={(e) => {
-                          const isCustomModel = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustomModel = e.target.value === 'other';
                           setShowCustomRacketModel(isCustomModel);
                           if (!isCustomModel) {
                             setValue('custom_racket_model', '');
@@ -1457,7 +1457,7 @@ const RegistroRapidoClient: React.FC = () => {
                       <select
                         {...register('drive_rubber_brand')}
                         onChange={(e) => {
-                          const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustom = e.target.value === 'other';
                           setShowCustomDriveRubberBrand(isCustom);
                           if (!isCustom) {
                             setValue('custom_drive_rubber_brand', '');
@@ -1472,7 +1472,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                          ¿Tu marca no está aquí? ¡Agrégala!
+                          ¿Tu marca no está aquí? ¡Agrégala al listado!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
@@ -1490,7 +1490,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('drive_rubber_model')}
                         id="drive_rubber_model"
                         onChange={(e) => {
-                          const isCustomModel = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustomModel = e.target.value === 'other';
                           setShowCustomDriveRubberModel(isCustomModel);
                           if (!isCustomModel) {
                             setValue('custom_drive_rubber_model', '');
@@ -1505,7 +1505,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                          ¿Tu modelo no está aquí? ¡Agrégalo!
+                          ¿Tu modelo no está aquí? ¡Agrégalo al listado!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -1567,7 +1567,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('drive_rubber_hardness')}
                         id="drive_rubber_hardness"
                         onChange={(e) => {
-                          const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustom = e.target.value === 'other';
                           setShowCustomDriveHardness(isCustom);
                           if (!isCustom) {
                             setValue('custom_drive_rubber_hardness', '');
@@ -1735,7 +1735,7 @@ const RegistroRapidoClient: React.FC = () => {
                       <select
                         {...register('backhand_rubber_brand')}
                         onChange={(e) => {
-                          const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustom = e.target.value === 'other';
                           setShowCustomBackhandRubberBrand(isCustom);
                           if (!isCustom) {
                             setValue('custom_backhand_rubber_brand', '');
@@ -1768,7 +1768,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('backhand_rubber_model')}
                         id="backhand_rubber_model"
                         onChange={(e) => {
-                          const isCustomModel = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustomModel = e.target.value === 'other';
                           setShowCustomBackhandRubberModel(isCustomModel);
                           if (!isCustomModel) {
                             setValue('custom_backhand_rubber_model', '');
@@ -1845,7 +1845,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('backhand_rubber_hardness')}
                         id="backhand_rubber_hardness"
                         onChange={(e) => {
-                          const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                          const isCustom = e.target.value === 'other';
                           setShowCustomBackhandHardness(isCustom);
                           if (!isCustom) {
                             setValue('custom_backhand_rubber_hardness', '');
@@ -2047,7 +2047,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="flex items-center justify-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Confirmar Registro
                       </div>
