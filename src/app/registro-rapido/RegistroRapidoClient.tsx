@@ -368,6 +368,7 @@ const RegistroRapidoClient: React.FC = () => {
   const [showCustomBackhandRubberBrand, setShowCustomBackhandRubberBrand] = useState(false);
   const [showCustomBackhandRubberModel, setShowCustomBackhandRubberModel] = useState(false);
   const [showCustomClub, setShowCustomClub] = useState(false);
+  const [showCustomLeague, setShowCustomLeague] = useState(false); // NUEVO: Estado para liga personalizada
   const [showCustomDriveHardness, setShowCustomDriveHardness] = useState(false);
   const [showCustomBackhandHardness, setShowCustomBackhandHardness] = useState(false);
   
@@ -655,7 +656,7 @@ const RegistroRapidoClient: React.FC = () => {
           >
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l-7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
             </div>
             
@@ -774,7 +775,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-400">
                         <svg className="h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                     )}
@@ -800,7 +801,7 @@ const RegistroRapidoClient: React.FC = () => {
                 <div className="text-center">
                   <p className="text-sm text-gray-600 font-medium flex items-center justify-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Foto opcional - Máximo 5MB (JPEG, PNG, GIF, WebP)
                   </p>
@@ -1035,7 +1036,11 @@ const RegistroRapidoClient: React.FC = () => {
                       className={`${inputStyles} ${inputNormalStyles}`}
                       onChange={(e) => {
                         setValue('league', e.target.value);
-                        setLeagueValidation(null);
+                        const isCustom = e.target.value === 'other';  // CORREGIDO: Usar 'other'
+                        setShowCustomLeague(isCustom);
+                        if (!isCustom) {
+                          setValue('league_custom', '');
+                        }
                       }}
                     >
                       <option value="">Seleccionar liga</option>
@@ -1045,38 +1050,48 @@ const RegistroRapidoClient: React.FC = () => {
                         </option>
                       ))}
                       <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                        ¿Tu liga no está aquí? ¡Agrégala!
+                        🏆 ¿Tu liga no está aquí? ¡Agrégala al listado!
                       </option>
                     </select>
                     
-                    {watch('league') === 'other' && (
+                    {/* Campo personalizado para liga - CORREGIDO: Siguiendo la misma lógica que otros campos */}
+                    {showCustomLeague && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                        className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-sm"
                       >
-                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
-                          Liga Personalizada
-                        </h4>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-purple-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-purple-800">
+                              🏆 Agregar Liga al Listado
+                            </h4>
+                            <p className="text-purple-700 text-sm font-medium">
+                              Escribe el nombre de tu liga y agrégala para que otros también puedan seleccionarla
+                            </p>
+                          </div>
+                        </div>
                         <div className="space-y-3">
                           <input
+                            {...register('league_custom')}
                             type="text"
                             placeholder="Escribe el nombre de tu liga"
-                            className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
-                            onChange={(e) => {
-                              setValue('league_custom', e.target.value);
-                              setLeagueValidation(null);
-                            }}
+                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600 bg-white"
                           />
                           <CustomFieldValidator
                             fieldType="league"
                             value={watch('league_custom') || ''}
-                            currentOptions={leagueOptions.options}
-                            onValidationResult={setLeagueValidation}
-                            onSuggestionAccepted={(value) => setValue('league_custom', value)}
+                            onValidationResult={(result) => handleValidationResult('league', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('league_custom', value)}
                             onFieldAdded={handleFieldAdded}
-                            isVisible={!!watch('league_custom')}
+                            isVisible={showCustomLeague}
+                            currentOptions={leagueOptions.options}
                           />
                         </div>
                       </motion.div>
@@ -1086,7 +1101,12 @@ const RegistroRapidoClient: React.FC = () => {
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span>Puedes agregar una nueva liga si no está en la lista</span>
+                      <span>
+                        {leagueOptions.options.length > 0 
+                          ? `${leagueOptions.options.length} ligas disponibles. ¿No encuentras la tuya? ¡Agrégala!`
+                          : 'Cargando lista de ligas...'
+                        }
+                      </span>
                     </p>
                   </div>
                   
@@ -1575,11 +1595,23 @@ const RegistroRapidoClient: React.FC = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg col-span-full"
+                        className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm col-span-full"
                       >
-                        <h4 className="text-lg font-semibold text-amber-800 mb-3">
-                          Marca Personalizada de Caucho Drive
-                        </h4>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-amber-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-amber-800">
+                              🏷️ Agregar Marca de Caucho Drive
+                            </h4>
+                            <p className="text-amber-700 text-sm font-medium">
+                              Escribe la marca de tu caucho drive y agrégala para que otros también puedan seleccionarla
+                            </p>
+                          </div>
+                        </div>
                         <div className="space-y-3">
                           <input
                             {...register('custom_drive_rubber_brand')}
