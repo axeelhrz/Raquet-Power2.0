@@ -257,8 +257,8 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
 
       await onSave(clubFormData);
       
-      // The modal will be closed by the parent component
-      // and the form will be reset by the useEffect hooks
+      // After successful save, reset the form and close the modal
+      handleClose();
     } catch (error) {
       // Error handling is done in the parent component
       console.error('Error in form submission:', error);
