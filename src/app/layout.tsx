@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import AuthDebug from "@/components/AuthDebug";
 import DevTools from "@/components/DevTools";
 import ThemeProvider from "@/components/ThemeProvider";
+import ChunkErrorBoundary from "@/components/ui/ChunkErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          <AuthProvider>
-            {children}
-            <AuthDebug />
-            <DevTools />
-          </AuthProvider>
-        </ThemeProvider>
+        <ChunkErrorBoundary>
+          <ThemeProvider>
+            <AuthProvider>
+              {children}
+              <AuthDebug />
+              <DevTools />
+            </AuthProvider>
+          </ThemeProvider>
+        </ChunkErrorBoundary>
       </body>
     </html>
   );
