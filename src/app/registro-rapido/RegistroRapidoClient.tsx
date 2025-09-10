@@ -42,6 +42,9 @@ const registroRapidoSchema = z.object({
   club_name: z.string().optional(),
   club_name_custom: z.string().optional(),
   
+  // Rol en el club - NUEVO CAMPO
+  club_role: z.enum(['ninguno', 'administrador', 'dueño']).optional(),
+  
   // Ranking - NUEVO CAMPO
   ranking: z.string().optional(),
   
@@ -183,7 +186,7 @@ const ECUADOR_PROVINCES = [
     name: 'Manabí', 
     cities: [
       '24 de Mayo', 'Bahía de Caráquez', 'Bolívar', 'Calceta', 'Chone', 'Crucita', 
-      'El Carmen', 'Flavio Alfaro', 'Jama', 'Jaramijó', 'Jipijapa', 'Junín', 
+      'El Carmen', 'Flavio Alfaro', 'Jama', 'Jaramijo', 'Jipijapa', 'Junín', 
       'Manta', 'Montecristi', 'Olmedo', 'Paján', 'Pedernales', 'Pichincha', 
       'Portoviejo', 'Puerto López', 'Rocafuerte', 'San Vicente', 'Santa Ana', 
       'Sucre', 'Tosagua'
@@ -311,16 +314,26 @@ const POPULAR_RACKET_MODELS = [
   'Zhang Jike Super ZLC'
 ];
 
-// ACTUALIZADO: Modelos populares de caucho drive
+// ACTUALIZADO: Modelos populares de caucho drive - RESTAURADO: Lista completa
 const POPULAR_DRIVE_MODELS = [
-  'Acuda Blue P1', 'Bluefire M1', 'Dignics 05', 'Evolution MX-P', 'Fastarc G-1', 
-  'Hurricane 3', 'Rasanter R42', 'Rozena', 'Tenergy 05', 'Xiom Vega Pro'
+  'Acuda Blue P1', 'Acuda Blue P3', 'Battle 2', 'Big Dipper', 'Cross 729', 
+  'Dignics 05', 'Dignics 09C', 'Evolution MX-P', 'Evolution MX-S', 
+  'Focus 3', 'Friendship 802-40', 'Hexer HD', 'Hexer Powergrip', 
+  'Hurricane 3', 'Hurricane 8', 'Omega VII Euro', 'Omega VII Pro', 
+  'Rakza 7', 'Rakza 9', 'Rhyzer 48', 'Rhyzer 50', 'Rozena', 
+  'Skyline 3', 'Target Pro GT-H47', 'Target Pro GT-M43', 'Tenergy 05', 
+  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
 ];
 
-// ACTUALIZADO: Modelos populares de caucho back
+// ACTUALIZADO: Modelos populares de caucho back - RESTAURADO: Lista completa
 const POPULAR_BACKHAND_MODELS = [
-  'Acuda Blue P3', 'Bluefire M3', 'Dignics 80', 'Evolution FX-P', 'Fastarc C-1', 
-  'Hurricane 3 Neo', 'Rasanter R37', 'Rozena', 'Tenergy 80', 'Xiom Vega Asia'
+  'Acuda Blue P1', 'Acuda Blue P2', 'Battle 2 Back', 'Cross 729-2', 
+  'Dignics 05', 'Dignics 80', 'Evolution EL-P', 'Evolution MX-P', 
+  'Focus Snipe', 'Friendship 729 Super FX', 'Grass D.TecS', 'Hexer Pips+', 
+  'Hexer Powergrip', 'Hurricane 3 Neo', 'Omega VII Euro', 'Omega VII Pro', 
+  'Plaxon 450', 'Rakza 7 Soft', 'Rakza X', 'Rhyzer 43', 'Rhyzer 48', 
+  'Rozena', 'Target Pro GT-M40', 'Target Pro GT-S43', 'Tenergy 05', 
+  'Tenergy 64', 'Tenergy 80', 'V > 15 Extra', 'V > 20 Double Extra'
 ];
 
 const RUBBER_COLORS = ['amarillo', 'azul', 'fucsia', 'morado', 'negro', 'rojo', 'verde'];
@@ -396,6 +409,13 @@ const RegistroRapidoClient: React.FC = () => {
     resolver: zodResolver(registroRapidoSchema),
     defaultValues: {
       country: 'Ecuador',
+      // Datos por defecto especificados
+      first_name: 'Juan',
+      second_name: 'Carlos',
+      last_name: 'Pérez',
+      second_last_name: 'Paz',
+      doc_id: '0999999999',
+      phone: '0989999999',
     },
   });
 
@@ -415,7 +435,7 @@ const RegistroRapidoClient: React.FC = () => {
   // NUEVO: Opciones dinámicas para club y league
   const clubOptions = useDynamicOptions('club', TT_CLUBS_ECUADOR);
   const leagueOptions = useDynamicOptions('league', [
-    '593LATM', 'Liga Amateur de Tenis de Mesa', 'LATEM'
+    '593LATM'
   ]);
 
   // State for league validation
@@ -1214,6 +1234,28 @@ const RegistroRapidoClient: React.FC = () => {
                       <span>Ingresa tu ranking actual si lo conoces (campo opcional)</span>
                     </p>
                   </div>
+
+                  {/* NUEVO: Campo de Rol en el Club */}
+                  <div className="space-y-2">
+                    <label htmlFor="club_role" className={labelStyles}>
+                      Rol en el Club
+                    </label>
+                    <select
+                      {...register('club_role')}
+                      id="club_role"
+                      className={`${inputStyles} ${inputNormalStyles}`}
+                    >
+                      <option value="ninguno">Ninguno</option>
+                      <option value="administrador">Administrador del Club</option>
+                      <option value="dueño">Dueño del Club</option>
+                    </select>
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Selecciona tu rol en el club si tienes alguna responsabilidad administrativa</span>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Estilo de Juego */}
@@ -1265,7 +1307,7 @@ const RegistroRapidoClient: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="bg-blue-100 rounded-full p-2">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                       <div>
@@ -1472,7 +1514,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                          ¿Tu marca no está aquí? ¡Agrégala al listado!
+                          🏷️ ¿Tu marca no está aquí? ¡Agrégala al listado!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
@@ -1505,7 +1547,7 @@ const RegistroRapidoClient: React.FC = () => {
                           </option>
                         ))}
                         <option value="other" className="bg-amber-50 text-amber-800 font-bold">
-                          ¿Tu modelo no está aquí? ¡Agrégalo al listado!
+                          🎯 ¿Tu modelo no está aquí? ¡Agrégalo al listado!
                         </option>
                       </select>
                       <p className="text-xs text-gray-600 font-medium">
@@ -2028,38 +2070,10 @@ const RegistroRapidoClient: React.FC = () => {
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-200 ${
-                      isSubmitting
-                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl'
-                    }`}
+                    className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold text-lg shadow-lg hover:shadow-xl"
                   >
-                    {isSubmitting ? (
-                      <div className="flex items-center justify-center gap-3">
-                        <svg className="animate-spin h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Procesando...
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Confirmar Registro
-                      </div>
-                    )}
+                    Registrar
                   </motion.button>
-                  
-                  <p className="text-center text-sm text-gray-600 font-medium mt-4 flex items-center justify-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    Tu información está segura y será utilizada únicamente para el censo de tenis de mesa
-                  </p>
                 </div>
               </form>
             </motion.div>

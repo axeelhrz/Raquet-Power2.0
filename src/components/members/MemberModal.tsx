@@ -82,9 +82,10 @@ const RUBBER_TYPES = [
 const SPONGE_THICKNESSES = ['0,5', '0,7', '1,5', '1,6', '1,8', '1,9', '2', '2,1', '2,2', 'sin esponja'];
 
 const POPULAR_BRANDS = [
-  'Butterfly', 'DHS', 'Sanwei', 'Nittaku', 'Yasaka', 'Stiga', 
-  'Victas', 'Joola', 'Xiom', 'Saviga', 'Friendship', 'Dr. Neubauer', 
-  'Double Fish', 'Hurricane', 'Yinhe'
+  'Andro', 'Avalox', 'Butterfly', 'Cornilleau', 'DHS', 'Donic', 'Double Fish', 
+  'Dr. Neubauer', 'Friendship', 'Gewo', 'Hurricane', 'Joola', 'Killerspin', 
+  'Nittaku', 'Palio', 'Sanwei', 'Saviga', 'Stiga', 'TSP', 
+  'Tibhar', 'Victas', 'Xiom', 'Yasaka', 'Yinhe'
 ];
 
 const RUBBER_COLORS = ['negro', 'rojo', 'verde', 'azul', 'amarillo', 'morado', 'fucsia'];

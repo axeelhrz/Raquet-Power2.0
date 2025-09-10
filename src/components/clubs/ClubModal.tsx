@@ -107,44 +107,107 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
   const watchedProvince = watch('province');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
 
+  // Reset form completely when modal opens/closes or club changes
   useEffect(() => {
-    if (club) {
-      reset({
-        league_id: club.league_id?.toString() || '',
-        name: club.name || '',
-        ruc: club.ruc || '',
-        country: club.country || 'Ecuador',
-        province: club.province || '',
-        city: club.city || '',
-        address: club.address || '',
-        google_maps_url: club.google_maps_url || '',
-        description: club.description || '',
-        founded_date: club.founded_date || '',
-        representative_name: club.representative_name || '',
-        representative_phone: club.representative_phone || '',
-        representative_email: club.representative_email || '',
-        admin1_name: club.admin1_name || '',
-        admin1_phone: club.admin1_phone || '',
-        admin1_email: club.admin1_email || '',
-        admin2_name: club.admin2_name || '',
-        admin2_phone: club.admin2_phone || '',
-        admin2_email: club.admin2_email || '',
-        admin3_name: club.admin3_name || '',
-        admin3_phone: club.admin3_phone || '',
-        admin3_email: club.admin3_email || '',
-      });
-      
-      if (club.logo_path) {
-        setLogoPreview(`/storage/${club.logo_path}`);
+    if (isOpen) {
+      if (club) {
+        // Editing existing club
+        reset({
+          league_id: club.league_id?.toString() || '',
+          name: club.name || '',
+          ruc: club.ruc || '',
+          country: club.country || 'Ecuador',
+          province: club.province || '',
+          city: club.city || '',
+          address: club.address || '',
+          google_maps_url: club.google_maps_url || '',
+          description: club.description || '',
+          founded_date: club.founded_date || '',
+          representative_name: club.representative_name || '',
+          representative_phone: club.representative_phone || '',
+          representative_email: club.representative_email || '',
+          admin1_name: club.admin1_name || '',
+          admin1_phone: club.admin1_phone || '',
+          admin1_email: club.admin1_email || '',
+          admin2_name: club.admin2_name || '',
+          admin2_phone: club.admin2_phone || '',
+          admin2_email: club.admin2_email || '',
+          admin3_name: club.admin3_name || '',
+          admin3_phone: club.admin3_phone || '',
+          admin3_email: club.admin3_email || '',
+        });
+        
+        if (club.logo_path) {
+          setLogoPreview(`/storage/${club.logo_path}`);
+        } else {
+          setLogoPreview(null);
+        }
+      } else {
+        // Creating new club - reset to default values
+        reset({
+          league_id: '',
+          name: '',
+          ruc: '',
+          country: 'Ecuador',
+          province: '',
+          city: '',
+          address: '',
+          google_maps_url: '',
+          description: '',
+          founded_date: '',
+          representative_name: '',
+          representative_phone: '',
+          representative_email: '',
+          admin1_name: '',
+          admin1_phone: '',
+          admin1_email: '',
+          admin2_name: '',
+          admin2_phone: '',
+          admin2_email: '',
+          admin3_name: '',
+          admin3_phone: '',
+          admin3_email: '',
+        });
+        setLogoPreview(null);
+        setSelectedLogo(null);
       }
-    } else {
+      setCurrentStep(1);
+    }
+  }, [isOpen, club, reset]);
+
+  // Additional cleanup when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset form state completely when modal closes
       reset({
+        league_id: '',
+        name: '',
+        ruc: '',
         country: 'Ecuador',
+        province: '',
+        city: '',
+        address: '',
+        google_maps_url: '',
+        description: '',
+        founded_date: '',
+        representative_name: '',
+        representative_phone: '',
+        representative_email: '',
+        admin1_name: '',
+        admin1_phone: '',
+        admin1_email: '',
+        admin2_name: '',
+        admin2_phone: '',
+        admin2_email: '',
+        admin3_name: '',
+        admin3_phone: '',
+        admin3_email: '',
       });
       setLogoPreview(null);
+      setSelectedLogo(null);
+      setCurrentStep(1);
     }
-    setCurrentStep(1);
-  }, [club, reset]);
+  }, [isOpen, reset]);
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -159,39 +222,47 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
   };
 
   const onSubmit = async (data: ClubFormValues) => {
-    // Convert the form data to ClubForm format and call the parent's onSave
-    const clubFormData: ClubForm = {
-      // Basic information
-      name: data.name,
-      city: data.city || '',
-      address: data.address,
-      phone: data.representative_phone,
-      email: data.representative_email,
-      status: 'active', // Default status
-      league_id: data.league_id ? parseInt(data.league_id) : undefined,
-      
-      // Additional fields that the backend expects
-      ruc: data.ruc,
-      country: data.country,
-      province: data.province,
-      google_maps_url: data.google_maps_url,
-      description: data.description,
-      founded_date: data.founded_date,
-      representative_name: data.representative_name,
-      representative_phone: data.representative_phone,
-      representative_email: data.representative_email,
-      admin1_name: data.admin1_name,
-      admin1_phone: data.admin1_phone,
-      admin1_email: data.admin1_email,
-      admin2_name: data.admin2_name,
-      admin2_phone: data.admin2_phone,
-      admin2_email: data.admin2_email,
-      admin3_name: data.admin3_name,
-      admin3_phone: data.admin3_phone,
-      admin3_email: data.admin3_email,
-    };
+    try {
+      // Convert the form data to ClubForm format and call the parent's onSave
+      const clubFormData: ClubForm = {
+        // Basic information
+        name: data.name,
+        city: data.city || '',
+        address: data.address,
+        phone: data.representative_phone,
+        email: data.representative_email,
+        status: 'active', // Default status
+        league_id: data.league_id ? parseInt(data.league_id) : undefined,
+        
+        // Additional fields that the backend expects
+        ruc: data.ruc,
+        country: data.country,
+        province: data.province,
+        google_maps_url: data.google_maps_url,
+        description: data.description,
+        founded_date: data.founded_date,
+        representative_name: data.representative_name,
+        representative_phone: data.representative_phone,
+        representative_email: data.representative_email,
+        admin1_name: data.admin1_name,
+        admin1_phone: data.admin1_phone,
+        admin1_email: data.admin1_email,
+        admin2_name: data.admin2_name,
+        admin2_phone: data.admin2_phone,
+        admin2_email: data.admin2_email,
+        admin3_name: data.admin3_name,
+        admin3_phone: data.admin3_phone,
+        admin3_email: data.admin3_email,
+      };
 
-    await onSave(clubFormData);
+      await onSave(clubFormData);
+      
+      // The modal will be closed by the parent component
+      // and the form will be reset by the useEffect hooks
+    } catch (error) {
+      // Error handling is done in the parent component
+      console.error('Error in form submission:', error);
+    }
   };
 
   const nextStep = () => {
@@ -204,6 +275,38 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleClose = () => {
+    // Reset form when closing manually
+    reset({
+      league_id: '',
+      name: '',
+      ruc: '',
+      country: 'Ecuador',
+      province: '',
+      city: '',
+      address: '',
+      google_maps_url: '',
+      description: '',
+      founded_date: '',
+      representative_name: '',
+      representative_phone: '',
+      representative_email: '',
+      admin1_name: '',
+      admin1_phone: '',
+      admin1_email: '',
+      admin2_name: '',
+      admin2_phone: '',
+      admin2_email: '',
+      admin3_name: '',
+      admin3_phone: '',
+      admin3_email: '',
+    });
+    setLogoPreview(null);
+    setSelectedLogo(null);
+    setCurrentStep(1);
+    onClose();
   };
 
   const inputStyles = "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-900 font-medium placeholder-gray-500 bg-white hover:border-gray-400";
@@ -234,7 +337,7 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-white hover:text-gray-200 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -665,7 +768,7 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
           <div className="flex space-x-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancelar
