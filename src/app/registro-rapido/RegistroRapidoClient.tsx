@@ -443,6 +443,11 @@ const RegistroRapidoClient: React.FC = () => {
   // State for club validation
   const [clubValidation, setClubValidation] = useState<ValidationResult | null>(null);
 
+  // Watch for club selection to show/hide club role field
+  const watchedClubName = watch('club_name');
+  const watchedClubNameCustom = watch('club_name_custom');
+  const hasClubSelected = watchedClubName && watchedClubName !== '' || watchedClubNameCustom && watchedClubNameCustom !== '';
+
   // Handle photo selection
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1235,27 +1240,34 @@ const RegistroRapidoClient: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* NUEVO: Campo de Rol en el Club */}
-                  <div className="space-y-2">
-                    <label htmlFor="club_role" className={labelStyles}>
-                      Rol en el Club
-                    </label>
-                    <select
-                      {...register('club_role')}
-                      id="club_role"
-                      className={`${inputStyles} ${inputNormalStyles}`}
+                  {/* NUEVO: Campo de Rol en el Club - Solo visible cuando se selecciona un club */}
+                  {hasClubSelected && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-2"
                     >
-                      <option value="ninguno">Ninguno</option>
-                      <option value="administrador">Administrador del Club</option>
-                      <option value="dueño">Dueño del Club</option>
-                    </select>
-                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Selecciona tu rol en el club si tienes alguna responsabilidad administrativa</span>
-                    </p>
-                  </div>
+                      <label htmlFor="club_role" className={labelStyles}>
+                        Rol en el Club
+                      </label>
+                      <select
+                        {...register('club_role')}
+                        id="club_role"
+                        className={`${inputStyles} ${inputNormalStyles}`}
+                      >
+                        <option value="ninguno">Ninguno</option>
+                        <option value="administrador">Administrador del Club</option>
+                        <option value="dueño">Dueño del Club</option>
+                      </select>
+                      <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Selecciona tu rol en el club si tienes alguna responsabilidad administrativa</span>
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Estilo de Juego */}
