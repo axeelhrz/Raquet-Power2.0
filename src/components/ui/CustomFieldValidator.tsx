@@ -91,7 +91,17 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     setErrorMessage(null);
     
     try {
-      // PRIMERO: Validar contra la lista actual (más rápido)
+      // MODIFICACIÓN: Para el campo 'club', saltar todas las validaciones y mostrar directamente el botón
+      if (fieldType === 'club') {
+        // Para clubes, siempre mostrar el botón para agregar sin validaciones
+        setValidationResult(null);
+        onValidationResult(null);
+        setShowAddButton(true);
+        setIsValidating(false);
+        return;
+      }
+      
+      // PRIMERO: Validar contra la lista actual (más rápido) - Solo para otros campos
       const localValidation = validateAgainstCurrentOptions(value);
       
       if (localValidation) {
@@ -102,16 +112,6 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       }
       
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
-      // MODIFICACIÓN: Para el campo 'club', saltar la validación de base de datos
-      if (fieldType === 'club') {
-        // Para clubes, mostrar directamente el botón para agregar
-        setValidationResult(null);
-        onValidationResult(null);
-        setShowAddButton(true);
-        setIsValidating(false);
-        return;
-      }
-      
       const result = await validateCustomField(fieldType, value);
       
       if (result && result.is_duplicate) {
