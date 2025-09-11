@@ -409,13 +409,13 @@ const RegistroRapidoClient: React.FC = () => {
     resolver: zodResolver(registroRapidoSchema),
     defaultValues: {
       country: 'Ecuador',
-      // Datos por defecto especificados
-      first_name: 'Juan',
-      second_name: 'Carlos',
-      last_name: 'Pérez',
-      second_last_name: 'Paz',
-      doc_id: '0999999999',
-      phone: '0989999999',
+      // Datos por defecto especificados como placeholders
+      first_name: '',
+      second_name: '',
+      last_name: '',
+      second_last_name: '',
+      doc_id: '',
+      phone: '',
     },
   });
 
@@ -800,7 +800,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-400">
                         <svg className="h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93M3 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                     )}
@@ -826,7 +826,7 @@ const RegistroRapidoClient: React.FC = () => {
                 <div className="text-center">
                   <p className="text-sm text-gray-600 font-medium flex items-center justify-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93M3 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Foto opcional - Máximo 5MB (JPEG, PNG, GIF, WebP)
                   </p>
@@ -850,7 +850,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('first_name')}
                         type="text"
                         id="first_name"
-                        placeholder="Luis"
+                        placeholder="Juan"
                         className={`${inputStyles} ${errors.first_name ? inputErrorStyles : inputNormalStyles}`}
                       />
                       {errors.first_name && (
@@ -866,7 +866,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('second_name')}
                         type="text"
                         id="second_name"
-                        placeholder="Abelardo"
+                        placeholder="Carlos"
                         className={`${inputStyles} ${inputNormalStyles}`}
                       />
                       <p className="text-xs text-gray-600 font-medium">
@@ -882,7 +882,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('last_name')}
                         type="text"
                         id="last_name"
-                        placeholder="Vale"
+                        placeholder="Pérez"
                         className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles }`}
                                               />
                       {errors.last_name && (
@@ -898,7 +898,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('second_last_name')}
                         type="text"
                         id="second_last_name"
-                        placeholder="Zurita"
+                        placeholder="Paz"
                         className={`${inputStyles} ${errors.second_last_name ? inputErrorStyles : inputNormalStyles}`}
                       />
                       {errors.second_last_name && (
@@ -917,7 +917,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('doc_id')}
                         type="text"
                         id="doc_id"
-                        placeholder="913909999"
+                        placeholder="0999999999"
                         className={`${inputStyles} ${inputNormalStyles}`}
                       />
                     </div>
@@ -971,7 +971,7 @@ const RegistroRapidoClient: React.FC = () => {
                         {...register('phone')}
                         type="tel"
                         id="phone"
-                        placeholder="994818999"
+                        placeholder="0989999999"
                         className={`${inputStyles} ${errors.phone ? inputErrorStyles : inputNormalStyles}`}
                       />
                       {errors.phone && (
