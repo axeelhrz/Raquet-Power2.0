@@ -27,6 +27,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddButton, setShowAddButton] = useState(false);
   const [hasValidated, setHasValidated] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Función para validar contra la lista actual
   const validateAgainstCurrentOptions = (inputValue: string): ValidationResult | null => {
@@ -77,12 +78,14 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       setValidationResult(null);
       onValidationResult(null);
       setShowAddButton(false);
+      setErrorMessage(null);
       return;
     }
 
     setIsValidating(true);
     setShowAddButton(false);
     setValidationResult(null);
+    setErrorMessage(null);
     
     try {
       // PRIMERO: Validar contra la lista actual (más rápido)
@@ -118,42 +121,53 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       setValidationResult(null);
       onValidationResult(null);
       setShowAddButton(true);
-      setHasValidated(true); // AGREGAR ESTA LÍNEA
-
+      setHasValidated(true);
+      setErrorMessage('Error al validar el campo. Puedes intentar agregarlo de todas formas.');
     } finally {
       setIsValidating(false);
     }
   }, 800);
 
-// Resetear validación cuando cambia el valor
-useEffect(() => {
-  setHasValidated(false);
-}, [value]);
+  // Resetear validación cuando cambia el valor
+  useEffect(() => {
+    setHasValidated(false);
+    setErrorMessage(null);
+  }, [value]);
 
   // Validar cuando cambie el valor
-useEffect(() => {
-  if (isVisible && value && value.trim().length >= 2) {
-    if (!hasValidated) {
-      debouncedValidate(fieldType, value);
-      setHasValidated(true);
+  useEffect(() => {
+    if (isVisible && value && value.trim().length >= 2) {
+      if (!hasValidated) {
+        debouncedValidate(fieldType, value);
+        setHasValidated(true);
+      }
+    } else {
+      setValidationResult(null);
+      onValidationResult(null);
+      setShowAddButton(false);
+      setHasValidated(false);
+      setErrorMessage(null);
     }
-  } else {
-    setValidationResult(null);
-    onValidationResult(null);
-    setShowAddButton(false);
-    setHasValidated(false);
-  }
-  // Limpiar mensaje de éxito cuando cambie el valor
-  setSuccessMessage(null);
-}, [fieldType, value, isVisible]); // Remover currentOptions de las dependencias
+    // Limpiar mensaje de éxito cuando cambie el valor
+    setSuccessMessage(null);
+  }, [fieldType, value, isVisible, hasValidated, debouncedValidate, onValidationResult]);
 
   // Función para agregar campo cuando el usuario confirma
   const handleConfirmAdd = async () => {
-    if (!value || value.trim().length < 2) return;
+    if (!value || value.trim().length < 2) {
+      setErrorMessage('El valor debe tener al menos 2 caracteres');
+      return;
+    }
 
     setIsAdding(true);
+    setErrorMessage(null);
+    
     try {
-      const result = await addCustomField(fieldType, value);
+      console.log('Intentando agregar campo:', { fieldType, value });
+      
+      const result: AddFieldResult = await addCustomField(fieldType, value);
+      
+      console.log('Resultado de agregar campo:', result);
       
       if (result?.success) {
         // Campo agregado exitosamente
@@ -174,12 +188,14 @@ useEffect(() => {
           setSuccessMessage(null);
         }, 4000);
         
-        console.log('Campo agregado:', result.message);
+        console.log('Campo agregado exitosamente:', result.message);
       } else {
         console.error('Error al agregar campo:', result?.message);
+        setErrorMessage(result?.message || 'Error desconocido al agregar el campo');
       }
     } catch (error) {
       console.error('Error adding field:', error);
+      setErrorMessage('Error al agregar el campo. Por favor intenta de nuevo.');
     } finally {
       setIsAdding(false);
     }
@@ -190,6 +206,7 @@ useEffect(() => {
     setValidationResult(null);
     setSuccessMessage(null);
     setShowAddButton(false);
+    setErrorMessage(null);
   };
 
   // Obtener icono según el tipo de campo
@@ -242,7 +259,7 @@ useEffect(() => {
     }
   };
 
-  if (!isVisible || (!validationResult && !isValidating && !successMessage && !showAddButton)) {
+  if (!isVisible || (!validationResult && !isValidating && !successMessage && !showAddButton && !errorMessage)) {
     return null;
   }
 
@@ -254,6 +271,25 @@ useEffect(() => {
         exit={{ opacity: 0, height: 0 }}
         className="mt-2"
       >
+        {/* Mensaje de error */}
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex items-center gap-3 p-4 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl mb-3 shadow-sm"
+          >
+            <div className="flex-shrink-0 bg-red-100 rounded-full p-2">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-red-800">{errorMessage}</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Mensaje de éxito */}
         {successMessage && (
           <motion.div
@@ -398,6 +434,20 @@ useEffect(() => {
                   )}
                 </button>
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Botón para agregar cuando está cargando */}
+        {isAdding && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+              <span className="text-sm text-blue-700 font-bold">Agregando &quot;{value}&quot; al listado...</span>
             </div>
           </motion.div>
         )}

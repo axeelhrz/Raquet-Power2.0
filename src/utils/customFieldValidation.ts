@@ -1,4 +1,5 @@
 import axios from '@/lib/axios';
+import { isAxiosError } from 'axios';
 
 // ACTUALIZADO: Incluir club y league
 export type FieldType = 
@@ -53,15 +54,26 @@ export const validateCustomField = async (
   value: string
 ): Promise<ValidationResult> => {
   try {
+    console.log('Validando campo:', { fieldType, value });
+    
     const response = await axios.post('/api/validate-custom-field', {
       field_type: fieldType,
       value: value.trim()
     });
     
+    console.log('Respuesta de validación:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error validating custom field:', error);
-    throw new Error('Error al validar el campo personalizado');
+    
+    // Si hay un error de red o del servidor, devolver un resultado que permita agregar el campo
+    return {
+      is_duplicate: false,
+      suggested_value: value,
+      message: 'Error al validar, pero puedes agregar el campo',
+      match_type: null,
+      source: null
+    };
   }
 };
 
@@ -73,16 +85,25 @@ export const addCustomField = async (
   value: string
 ): Promise<AddFieldResult> => {
   try {
+    console.log('Agregando campo:', { fieldType, value });
+    
     const response = await axios.post('/api/add-custom-field', {
       field_type: fieldType,
       value: value.trim()
     });
     
+    console.log('Respuesta de agregar campo:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error adding custom field:', error);
+    
+    if (isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || 'Error al agregar el campo personalizado';
+      throw new Error(errorMessage);
+    }
+    }
+    
     throw new Error('Error al agregar el campo personalizado');
-  }
 };
 
 /**
@@ -90,7 +111,11 @@ export const addCustomField = async (
  */
 export const getFieldOptions = async (fieldType: FieldType): Promise<string[]> => {
   try {
+    console.log('Obteniendo opciones para:', fieldType);
+    
     const response = await axios.get<FieldOptionsResult>(`/api/field-options/${fieldType}`);
+    
+    console.log('Opciones obtenidas:', response.data);
     return response.data.options;
   } catch (error) {
     console.error('Error getting field options:', error);

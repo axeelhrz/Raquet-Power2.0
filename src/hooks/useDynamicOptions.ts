@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getFieldOptions, type FieldType } from '@/utils/customFieldValidation';
 
 export interface DynamicOptionsHook {
   options: string[];
@@ -35,7 +36,7 @@ const processQueue = async () => {
 };
 
 export const useDynamicOptions = (
-  fieldType: string,
+  fieldType: FieldType,
   fallbackOptions: string[] = []
 ): DynamicOptionsHook => {
   const [options, setOptions] = useState<string[]>(fallbackOptions);
@@ -81,26 +82,19 @@ export const useDynamicOptions = (
       setError(null);
 
       try {
-        const response = await fetch(`/api/dynamic-options/${fieldType}`, {
-          signal: abortControllerRef.current?.signal,
-          headers: {
-            'Cache-Control': 'public, s-maxage=300', // 5 minutes cache
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 429) {
-            throw new Error('Demasiadas solicitudes. Usando opciones por defecto.');
-          }
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const newOptions = Array.isArray(data) ? data : fallbackOptions;
+        console.log('Fetching options for field type:', fieldType);
+        
+        const newOptions = await getFieldOptions(fieldType);
+        
+        console.log('Received options:', newOptions);
 
         if (mountedRef.current) {
-          setOptions(newOptions);
-          setCachedOptions(fieldType, newOptions);
+          const finalOptions = Array.isArray(newOptions) && newOptions.length > 0 
+            ? newOptions 
+            : fallbackOptions;
+          
+          setOptions(finalOptions);
+          setCachedOptions(fieldType, finalOptions);
           setError(null);
         }
       } catch (err) {
