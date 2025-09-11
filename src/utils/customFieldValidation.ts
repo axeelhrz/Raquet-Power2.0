@@ -1,12 +1,12 @@
 import axios from '@/lib/axios';
 import { isAxiosError } from 'axios';
 
-// ACTUALIZADO: Incluir club y league
+// ACTUALIZADO: Incluir club y league - CORREGIDO: nombres de campos para coincidir con backend
 export type FieldType = 
   | 'brand' 
   | 'racket_model' 
-  | 'rubber_drive_model' 
-  | 'rubber_back_model' 
+  | 'drive_rubber_model'  // Corregido: era 'rubber_drive_model'
+  | 'backhand_rubber_model'  // Corregido: era 'rubber_back_model'
   | 'drive_rubber_hardness' 
   | 'backhand_rubber_hardness'
   | 'club'
@@ -101,9 +101,9 @@ export const addCustomField = async (
       const errorMessage = error.response?.data?.message || 'Error al agregar el campo personalizado';
       throw new Error(errorMessage);
     }
-    }
     
     throw new Error('Error al agregar el campo personalizado');
+  }
 };
 
 /**

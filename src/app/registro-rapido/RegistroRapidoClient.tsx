@@ -426,9 +426,9 @@ const RegistroRapidoClient: React.FC = () => {
   const racketBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
   const racketModelOptions = useDynamicOptions('racket_model', POPULAR_RACKET_MODELS);
   const rubberDriveBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
-  const rubberDriveModelOptions = useDynamicOptions('rubber_drive_model', POPULAR_DRIVE_MODELS);
+  const rubberDriveModelOptions = useDynamicOptions('drive_rubber_model', POPULAR_DRIVE_MODELS);
   const rubberBackBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
-  const rubberBackModelOptions = useDynamicOptions('rubber_back_model', POPULAR_BACKHAND_MODELS);
+  const rubberBackModelOptions = useDynamicOptions('backhand_rubber_model', POPULAR_BACKHAND_MODELS);
   const driveHardnessOptions = useDynamicOptions('drive_rubber_hardness', HARDNESS_LEVELS);
   const backhandHardnessOptions = useDynamicOptions('backhand_rubber_hardness', HARDNESS_LEVELS);
 
@@ -512,10 +512,10 @@ const RegistroRapidoClient: React.FC = () => {
       case 'racket_model':
         racketModelOptions.addOptionToList(value);
         break;
-      case 'rubber_drive_model':
+      case 'drive_rubber_model':
         rubberDriveModelOptions.addOptionToList(value);
         break;
-      case 'rubber_back_model':
+      case 'backhand_rubber_model':
         rubberBackModelOptions.addOptionToList(value);
         break;
       case 'drive_rubber_hardness':
@@ -1718,7 +1718,7 @@ const RegistroRapidoClient: React.FC = () => {
                             className="w-full px-4 py-3 border-2 border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600 bg-white"
                           />
                           <CustomFieldValidator
-                            fieldType="rubber_drive_model"
+                            fieldType="drive_rubber_model"
                             value={watch('custom_drive_rubber_model') || ''}
                             onValidationResult={(result) => handleValidationResult('driveRubberModel', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_model', value)}
@@ -1996,7 +1996,7 @@ const RegistroRapidoClient: React.FC = () => {
                             className="w-full px-4 py-3 border-2 border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600 bg-white"
                           />
                           <CustomFieldValidator
-                            fieldType="rubber_back_model"
+                            fieldType="backhand_rubber_model"
                             value={watch('custom_backhand_rubber_model') || ''}
                             onValidationResult={(result) => handleValidationResult('backhandRubberModel', result)}
                             onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_model', value)}
