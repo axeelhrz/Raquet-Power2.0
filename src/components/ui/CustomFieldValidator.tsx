@@ -82,7 +82,10 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       return;
     }
 
-    setIsValidating(true);
+    // MODIFICACIÓN: Para el campo 'club', no mostrar el spinner de validación
+    if (fieldType !== 'club') {
+      setIsValidating(true);
+    }
     setShowAddButton(false);
     setValidationResult(null);
     setErrorMessage(null);
@@ -99,6 +102,16 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       }
       
       // SEGUNDO: Si no está en la lista actual, validar contra la base de datos
+      // MODIFICACIÓN: Para el campo 'club', saltar la validación de base de datos
+      if (fieldType === 'club') {
+        // Para clubes, mostrar directamente el botón para agregar
+        setValidationResult(null);
+        onValidationResult(null);
+        setShowAddButton(true);
+        setIsValidating(false);
+        return;
+      }
+      
       const result = await validateCustomField(fieldType, value);
       
       if (result && result.is_duplicate) {
@@ -183,10 +196,11 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
           onFieldAdded(fieldType, value);
         }
         
-        // Limpiar mensaje de éxito después de 4 segundos
+        // MODIFICACIÓN: Para clubes, limpiar mensaje de éxito más rápido y ocultar el campo personalizado
+        const successTimeout = fieldType === 'club' ? 2000 : 4000;
         setTimeout(() => {
           setSuccessMessage(null);
-        }, 4000);
+        }, successTimeout);
         
         console.log('Campo agregado exitosamente:', result.message);
       } else {
@@ -312,7 +326,8 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
           </motion.div>
         )}
 
-        {isValidating && (
+        {/* MODIFICACIÓN: Solo mostrar spinner de validación para campos que no sean 'club' */}
+        {isValidating && fieldType !== 'club' && (
           <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
             <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
             <span className="text-sm text-blue-700 font-bold">Validando...</span>

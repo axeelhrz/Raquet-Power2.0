@@ -524,11 +524,23 @@ const RegistroRapidoClient: React.FC = () => {
       case 'backhand_rubber_hardness':
         backhandHardnessOptions.addOptionToList(value);
         break;
-      case 'club':  // NUEVO
+      case 'club':  // MODIFICADO: Comportamiento especial para clubes
         clubOptions.addOptionToList(value);
+        // Automáticamente seleccionar el club recién agregado
+        setValue('club_name', value);
+        // Limpiar el campo personalizado
+        setValue('club_name_custom', '');
+        // Ocultar el campo personalizado
+        setShowCustomClub(false);
         break;
       case 'league':  // NUEVO
         leagueOptions.addOptionToList(value);
+        // Automáticamente seleccionar la liga recién agregada
+        setValue('league', value);
+        // Limpiar el campo personalizado
+        setValue('league_custom', '');
+        // Ocultar el campo personalizado
+        setShowCustomLeague(false);
         break;
     }
   };
