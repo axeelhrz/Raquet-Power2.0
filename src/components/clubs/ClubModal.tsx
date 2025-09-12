@@ -223,37 +223,45 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
 
   const onSubmit = async (data: ClubFormValues) => {
     try {
+      console.log('🏢 Form data before processing:', data);
+      
       // Convert the form data to ClubForm format and call the parent's onSave
       const clubFormData: ClubForm = {
-        // Basic information
-        name: data.name,
-        city: data.city || '',
-        address: data.address,
-        phone: data.representative_phone,
-        email: data.representative_email,
-        status: 'active', // Default status
-        league_id: data.league_id ? parseInt(data.league_id) : undefined,
+        // Basic information - ensure all required fields are present
+        name: data.name.trim(),
+        city: data.city?.trim() || '',
+        address: data.address?.trim() || '',
+        phone: data.representative_phone?.trim() || '',
+        email: data.representative_email?.trim() || '',
+        status: 'active', // Always set to active for new/updated clubs
+        league_id: data.league_id && data.league_id !== '' ? parseInt(data.league_id) : undefined,
         
         // Additional fields that the backend expects
-        ruc: data.ruc,
-        country: data.country,
-        province: data.province,
-        google_maps_url: data.google_maps_url,
-        description: data.description,
-        founded_date: data.founded_date,
-        representative_name: data.representative_name,
-        representative_phone: data.representative_phone,
-        representative_email: data.representative_email,
-        admin1_name: data.admin1_name,
-        admin1_phone: data.admin1_phone,
-        admin1_email: data.admin1_email,
-        admin2_name: data.admin2_name,
-        admin2_phone: data.admin2_phone,
-        admin2_email: data.admin2_email,
-        admin3_name: data.admin3_name,
-        admin3_phone: data.admin3_phone,
-        admin3_email: data.admin3_email,
+        ruc: data.ruc?.trim() || '',
+        country: data.country?.trim() || 'Ecuador',
+        province: data.province?.trim() || '',
+        google_maps_url: data.google_maps_url?.trim() || '',
+        description: data.description?.trim() || '',
+        founded_date: data.founded_date?.trim() || '',
+        
+        // Representative information
+        representative_name: data.representative_name?.trim() || '',
+        representative_phone: data.representative_phone?.trim() || '',
+        representative_email: data.representative_email?.trim() || '',
+        
+        // Administrator information
+        admin1_name: data.admin1_name?.trim() || '',
+        admin1_phone: data.admin1_phone?.trim() || '',
+        admin1_email: data.admin1_email?.trim() || '',
+        admin2_name: data.admin2_name?.trim() || '',
+        admin2_phone: data.admin2_phone?.trim() || '',
+        admin2_email: data.admin2_email?.trim() || '',
+        admin3_name: data.admin3_name?.trim() || '',
+        admin3_phone: data.admin3_phone?.trim() || '',
+        admin3_email: data.admin3_email?.trim() || '',
       };
+
+      console.log('🏢 Processed club form data:', clubFormData);
 
       await onSave(clubFormData);
       
@@ -261,7 +269,7 @@ const ClubModal: React.FC<ClubModalProps> = ({ isOpen, onClose, onSave, club, le
       handleClose();
     } catch (error) {
       // Error handling is done in the parent component
-      console.error('Error in form submission:', error);
+      console.error('❌ Error in form submission:', error);
     }
   };
 
