@@ -82,26 +82,32 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
       return;
     }
 
-    // MODIFICACIÓN: Para el campo 'club', no mostrar el spinner de validación
-    if (fieldType !== 'club') {
-      setIsValidating(true);
+    // MODIFICACIÓN: Para el campo 'club', usar validación simplificada
+    if (fieldType === 'club') {
+      // Para clubes, solo validar contra la lista actual y mostrar botón si no existe
+      const localValidation = validateAgainstCurrentOptions(value);
+      
+      if (localValidation) {
+        setValidationResult(localValidation);
+        onValidationResult(localValidation);
+        setShowAddButton(false);
+      } else {
+        // No existe en la lista actual, mostrar botón para agregar
+        setValidationResult(null);
+        onValidationResult(null);
+        setShowAddButton(true);
+      }
+      setIsValidating(false);
+      return;
     }
+
+    setIsValidating(true);
     setShowAddButton(false);
     setValidationResult(null);
     setErrorMessage(null);
     
     try {
-      // MODIFICACIÓN: Para el campo 'club', saltar todas las validaciones y mostrar directamente el botón
-      if (fieldType === 'club') {
-        // Para clubes, siempre mostrar el botón para agregar sin validaciones
-        setValidationResult(null);
-        onValidationResult(null);
-        setShowAddButton(true);
-        setIsValidating(false);
-        return;
-      }
-      
-      // PRIMERO: Validar contra la lista actual (más rápido) - Solo para otros campos
+      // PRIMERO: Validar contra la lista actual (más rápido) - Para otros campos
       const localValidation = validateAgainstCurrentOptions(value);
       
       if (localValidation) {
@@ -139,7 +145,7 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     } finally {
       setIsValidating(false);
     }
-  }, 800);
+  }, fieldType === 'club' ? 300 : 800); // Validación más rápida para clubes
 
   // Resetear validación cuando cambia el valor
   useEffect(() => {
@@ -189,14 +195,17 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
         setShowAddButton(false);
         
         // Mostrar mensaje de éxito
-        setSuccessMessage(`"${value}" se agregó exitosamente al listado`);
+        const successMsg = fieldType === 'club' 
+          ? `¡Perfecto! "${value}" se agregó al listado de clubes`
+          : `"${value}" se agregó exitosamente al listado`;
+        setSuccessMessage(successMsg);
         
         // Notificar al componente padre para actualizar el desplegable
         if (onFieldAdded) {
           onFieldAdded(fieldType, value);
         }
         
-        // MODIFICACIÓN: Para clubes, limpiar mensaje de éxito más rápido y ocultar el campo personalizado
+        // Para clubes, limpiar mensaje de éxito más rápido
         const successTimeout = fieldType === 'club' ? 2000 : 4000;
         setTimeout(() => {
           setSuccessMessage(null);
@@ -320,13 +329,16 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
             <div className="flex-1">
               <p className="text-sm font-bold text-green-800">{successMessage}</p>
               <p className="text-xs text-green-600 mt-1 font-medium">
-                Ya está disponible en el desplegable para su selección
+                {fieldType === 'club' 
+                  ? 'El club ya está disponible en el desplegable'
+                  : 'Ya está disponible en el desplegable para su selección'
+                }
               </p>
             </div>
           </motion.div>
         )}
 
-        {/* MODIFICACIÓN: Solo mostrar spinner de validación para campos que no sean 'club' */}
+        {/* Spinner de validación (solo para campos que no sean 'club') */}
         {isValidating && fieldType !== 'club' && (
           <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
             <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
@@ -424,10 +436,16 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-green-800 mb-2">
-                  ¡Perfecto! &quot;{value}&quot; no existe en el listado
+                  {fieldType === 'club' 
+                    ? `¡Perfecto! "${value}" no está en el listado de clubes`
+                    : `¡Perfecto! "${value}" no existe en el listado`
+                  }
                 </p>
                 <p className="text-xs text-green-600 font-medium mb-3">
-                  Puedes agregarlo para que esté disponible para todos los usuarios
+                  {fieldType === 'club'
+                    ? 'Puedes agregarlo para que esté disponible para todos los usuarios'
+                    : 'Puedes agregarlo para que esté disponible para todos los usuarios'
+                  }
                 </p>
                 <button
                   onClick={handleConfirmAdd}
@@ -444,7 +462,10 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Agregar &quot;{value}&quot; al listado
+                      {fieldType === 'club' 
+                        ? `Agregar "${value}" a los clubes`
+                        : `Agregar "${value}" al listado`
+                      }
                     </>
                   )}
                 </button>
@@ -462,7 +483,12 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-              <span className="text-sm text-blue-700 font-bold">Agregando &quot;{value}&quot; al listado...</span>
+              <span className="text-sm text-blue-700 font-bold">
+                {fieldType === 'club' 
+                  ? `Agregando "${value}" a los clubes...`
+                  : `Agregando "${value}" al listado...`
+                }
+              </span>
             </div>
           </motion.div>
         )}

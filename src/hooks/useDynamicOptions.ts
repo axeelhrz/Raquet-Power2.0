@@ -11,7 +11,7 @@ export interface DynamicOptionsHook {
 
 // Cache for storing options to prevent duplicate API calls
 const optionsCache = new Map<string, { data: string[]; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // Aumentado a 10 minutos para mejor persistencia
 const REQUEST_DELAY = 100; // 100ms delay between requests
 
 // Request queue to prevent rate limiting
@@ -35,11 +35,49 @@ const processQueue = async () => {
   isProcessingQueue = false;
 };
 
+// Función para persistir opciones en localStorage como backup
+const persistOptionsToStorage = (fieldType: string, options: string[]) => {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `dynamic_options_${fieldType}`;
+      const data = {
+        options,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  } catch (error) {
+    console.warn('Failed to persist options to localStorage:', error);
+  }
+};
+
+// Función para recuperar opciones de localStorage
+const getPersistedOptions = (fieldType: string): string[] | null => {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `dynamic_options_${fieldType}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const data = JSON.parse(stored);
+        // Verificar que los datos no sean muy antiguos (1 hora)
+        if (Date.now() - data.timestamp < 60 * 60 * 1000) {
+          return data.options;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to get persisted options from localStorage:', error);
+  }
+  return null;
+};
+
 export const useDynamicOptions = (
   fieldType: FieldType,
   fallbackOptions: string[] = []
 ): DynamicOptionsHook => {
-  const [options, setOptions] = useState<string[]>(fallbackOptions);
+  // Inicializar con opciones persistidas si están disponibles
+  const persistedOptions = getPersistedOptions(fieldType);
+  const [options, setOptions] = useState<string[]>(persistedOptions || fallbackOptions);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -57,6 +95,8 @@ export const useDynamicOptions = (
   // Set cache
   const setCachedOptions = useCallback((key: string, data: string[]) => {
     optionsCache.set(key, { data, timestamp: Date.now() });
+    // También persistir en localStorage
+    persistOptionsToStorage(key, data);
   }, []);
 
   const fetchOptions = useCallback(async () => {
@@ -106,8 +146,13 @@ export const useDynamicOptions = (
           console.warn(`Failed to fetch options for ${fieldType}:`, err.message);
           setError(err.message);
           
-          // Use fallback options on error
-          if (options.length === 0) {
+          // Intentar usar opciones persistidas como fallback
+          const persistedFallback = getPersistedOptions(fieldType);
+          if (persistedFallback && persistedFallback.length > 0) {
+            console.log('Using persisted options as fallback');
+            setOptions(persistedFallback);
+          } else if (options.length === 0) {
+            // Solo usar fallback si no tenemos opciones
             setOptions(fallbackOptions);
           }
         }
@@ -133,8 +178,10 @@ export const useDynamicOptions = (
       }
       const updatedOptions = [...prevOptions, trimmedOption].sort();
       
-      // Update cache
+      // Update cache and persist
       setCachedOptions(fieldType, updatedOptions);
+      
+      console.log(`Added new option "${trimmedOption}" to ${fieldType} list`);
       
       return updatedOptions;
     });
@@ -143,15 +190,25 @@ export const useDynamicOptions = (
   const refreshOptions = useCallback(() => {
     // Clear cache for this field type
     optionsCache.delete(fieldType);
+    // También limpiar localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`dynamic_options_${fieldType}`);
+    }
     fetchOptions();
   }, [fieldType, fetchOptions]);
 
   useEffect(() => {
     mountedRef.current = true;
     
-    // Only fetch if we don't have options and no cached data
-    if (options.length === 0 && !getCachedOptions(fieldType)) {
+    // Solo fetch si no tenemos opciones y no hay datos en cache o persistidos
+    const hasPersistedData = getPersistedOptions(fieldType);
+    const hasCachedData = getCachedOptions(fieldType);
+    
+    if (options.length === 0 && !hasCachedData && !hasPersistedData) {
       fetchOptions();
+    } else if (hasPersistedData && options.length === 0) {
+      // Si tenemos datos persistidos pero no opciones, usarlos
+      setOptions(hasPersistedData);
     }
 
     return () => {
