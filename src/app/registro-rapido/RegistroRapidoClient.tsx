@@ -793,7 +793,7 @@ const RegistroRapidoClient: React.FC = () => {
             <motion.div variants={itemVariants}>
               <AuthHeader
                 title="Censo de Tenis de Mesa"
-                subtitle="593 Liga Amateur de Tenis de Mesa (LATM)"
+                subtitle="593LATM (liga amateur de tenis de mesa)"
               />
             </motion.div>
 
