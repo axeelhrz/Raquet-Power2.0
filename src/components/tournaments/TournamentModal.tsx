@@ -24,7 +24,6 @@ import {
   FormControlLabel,
   Chip,
   Avatar,
-  Divider,
   Alert,
   IconButton,
   InputAdornment
@@ -38,9 +37,7 @@ import {
   CalendarToday,
   LocationOn,
   Person,
-  EmojiEvents,
-  Settings,
-  EmojiEventsOutlined
+  EmojiEvents
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tournament, Club } from '@/types';
@@ -52,6 +49,33 @@ interface TournamentModalProps {
   tournament?: Tournament | null;
   currentClub?: Club | null;
 }
+
+// Opciones de ranking para los filtros
+const RANKING_OPTIONS = [
+  { value: 'U800', label: 'U800' },
+  { value: 'U899', label: 'U899' },
+  { value: 'U900', label: 'U900' },
+  { value: 'U999', label: 'U999' },
+  { value: 'U1000', label: 'U1000' },
+  { value: 'U1099', label: 'U1099' },
+  { value: 'U1100', label: 'U1100' },
+  { value: 'U1199', label: 'U1199' },
+  { value: 'U1200', label: 'U1200' },
+  { value: 'U1299', label: 'U1299' },
+  { value: 'U1300', label: 'U1300' },
+  { value: 'U1399', label: 'U1399' },
+  { value: 'U1400', label: 'U1400' },
+  { value: 'U1499', label: 'U1499' },
+  { value: 'U1500', label: 'U1500' },
+  { value: 'U1599', label: 'U1599' },
+  { value: 'U1600', label: 'U1600' },
+  { value: 'U1699', label: 'U1699' },
+  { value: 'U1700', label: 'U1700' },
+  { value: 'U1799', label: 'U1799' },
+  { value: 'U1800', label: 'U1800' },
+  { value: 'U1899', label: 'U1899' },
+  { value: '+U1899', label: '+U1899' }
+];
 
 const getStepsForType = (type: string) => {
   if (type === 'team') {
@@ -72,13 +96,13 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     // Tipo de torneo
     type: '',
     
-    // Información básica
-    code: '',
+    // Información básica - FIXED: code should be number
+    code: 0,
     name: '',
     date: '',
     time: '',
     registrationDeadline: '',
-    country: 'Argentina',
+    country: 'Ecuador',
     province: '',
     city: '',
     clubName: '',
@@ -87,9 +111,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     // Parámetros del torneo - Individual
     modality: true,
     matchType: 'best_of_3',
-    eliminationType: 'single',
+    eliminationType: 'groups',
     maxParticipants: 32,
-    seedingType: 'ranking',
+    seedingType: 'random',
     rankingFilter: false,
     minRanking: '',
     maxRanking: '',
@@ -104,14 +128,14 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     reminderDays: 7,
     
     // Parámetros del torneo - Equipos
-    teamModality: 'singles', // singles o dobles
-    teamMatchType: 'best_2_of_3', // 2 de 3, 3 de 5, 4 de 7
-    teamEliminationType: 'groups', // Por Grupos, Eliminación Directa, Todos contra Todos, Mixto
+    teamModality: 'singles',
+    teamMatchType: 'best_2_of_3',
+    teamEliminationType: 'groups',
     playersPerTeam: 2,
     maxRankingBetweenPlayers: 1000,
-    categories: [] as string[], // Array de categorías seleccionadas
-    numberOfTeams: 8, // 4, 8, 16, 32
-    teamSeedingType: 'random', // Aleatorio, Tradicional, Secuencial
+    categories: [] as string[],
+    numberOfTeams: 8,
+    teamSeedingType: 'random',
     teamRankingFilter: false,
     teamMinRanking: '',
     teamMaxRanking: '',
@@ -123,16 +147,16 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     teamDrawLottery: true,
     teamSystemInvitation: true,
     teamScheduledReminder: false,
-    teamReminderDays: 7, // 7 o 15 días
+    teamReminderDays: 7,
     
-    // Premios (solo para equipos)
+    // Premios
     firstPrize: '',
     secondPrize: '',
     thirdPrize: '',
     fourthPrize: '',
     fifthPrize: '',
     
-    // Información de contacto (solo para equipos)
+    // Información de contacto
     contact: '',
     phone: '',
     ballInfo: '',
@@ -146,10 +170,7 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
 
   // Generar código único automáticamente
   const generateTournamentCode = () => {
-    const prefix = formData.type === 'individual' ? 'IND' : 'TEA';
-    const date = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    const random = Math.random().toString(36).substr(2, 4).toUpperCase();
-    return `${prefix}${date}${random}`;
+    return Math.floor(100000 + Math.random() * 900000);
   };
 
   useEffect(() => {
@@ -170,12 +191,12 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     if (tournament) {
       setFormData({
         type: tournament.tournament_type === 'single_elimination' || tournament.tournament_type === 'double_elimination' || tournament.tournament_type === 'round_robin' || tournament.tournament_type === 'swiss' ? 'individual' : 'team',
-        code: tournament.name?.substring(0, 10).toUpperCase() || '',
+        code: tournament.code || generateTournamentCode(),
         name: tournament.name || '',
         date: tournament.start_date?.split('T')[0] || '',
         time: tournament.start_date?.split('T')[1]?.slice(0, 5) || '',
         registrationDeadline: tournament.registration_deadline?.split('T')[0] || '',
-        country: 'Argentina',
+        country: 'Ecuador',
         province: tournament.club?.province || '',
         city: tournament.club?.city || '',
         clubName: tournament.club?.name || '',
@@ -184,7 +205,7 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
         matchType: 'best_of_3',
         eliminationType: tournament.tournament_type || 'single_elimination',
         maxParticipants: tournament.max_participants || 32,
-        seedingType: 'ranking',
+        seedingType: 'random',
         rankingFilter: false,
         minRanking: '',
         maxRanking: '',
@@ -239,7 +260,56 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
   }, [tournament]);
 
   const handleInputChange = (field: string, value: string | number | boolean | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Lógica para filtros de ranking - Individual
+      if (field === 'rankingFilter') {
+        if (value === true) {
+          newData.minRanking = 'todos';
+          newData.maxRanking = 'todos';
+        } else {
+          newData.minRanking = '';
+          newData.maxRanking = '';
+        }
+      }
+      
+      // Lógica para filtros de edad - Individual
+      if (field === 'ageFilter') {
+        if (value === true) {
+          newData.minAge = 'todos';
+          newData.maxAge = 'todos';
+        } else {
+          newData.minAge = '';
+          newData.maxAge = '';
+        }
+      }
+      
+      // Lógica para filtros de ranking - Equipos
+      if (field === 'teamRankingFilter') {
+        if (value === true) {
+          newData.teamMinRanking = 'todos';
+          newData.teamMaxRanking = 'todos';
+        } else {
+          newData.teamMinRanking = '';
+          newData.teamMaxRanking = '';
+        }
+      }
+      
+      // Lógica para filtros de edad - Equipos
+      if (field === 'teamAgeFilter') {
+        if (value === true) {
+          newData.teamMinAge = 'todos';
+          newData.teamMaxAge = 'todos';
+        } else {
+          newData.teamMinAge = '';
+          newData.teamMaxAge = '';
+        }
+      }
+      
+      return newData;
+    });
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -276,6 +346,11 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
         break;
       case 1:
         if (!formData.name) newErrors.name = 'El nombre del torneo es obligatorio';
+        if (!formData.code) {
+          newErrors.code = 'El código del torneo es obligatorio';
+        } else if (typeof formData.code !== 'number' || formData.code < 1) {
+          newErrors.code = 'El código debe ser un número positivo';
+        }
         if (!formData.date) newErrors.date = 'La fecha es obligatoria';
         if (!formData.time) newErrors.time = 'La hora es obligatoria';
         if (!formData.registrationDeadline) newErrors.registrationDeadline = 'La fecha de cierre es obligatoria';
@@ -291,28 +366,31 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
           if (formData.categories.length === 0) {
             newErrors.categories = 'Selecciona al menos una categoría';
           }
-          if (formData.teamRankingFilter && (!formData.teamMinRanking || !formData.teamMaxRanking)) {
+          if (formData.teamRankingFilter && formData.teamMinRanking !== 'todos' && (!formData.teamMinRanking || !formData.teamMaxRanking)) {
             newErrors.teamRanking = 'Define el rango de ranking';
           }
-          if (formData.teamAgeFilter && (!formData.teamMinAge || !formData.teamMaxAge)) {
+          if (formData.teamAgeFilter && formData.teamMinAge !== 'todos' && (!formData.teamMinAge || !formData.teamMaxAge)) {
             newErrors.teamAge = 'Define el rango de edad';
           }
         } else {
           if (!formData.maxParticipants || formData.maxParticipants < 4) {
             newErrors.maxParticipants = 'Mínimo 4 participantes';
           }
-          if (formData.ageFilter && (!formData.minAge || !formData.maxAge)) {
+          if (formData.rankingFilter && formData.minRanking !== 'todos' && (!formData.minRanking || !formData.maxRanking)) {
+            newErrors.ranking = 'Define el rango de ranking';
+          }
+          if (formData.ageFilter && formData.minAge !== 'todos' && (!formData.minAge || !formData.maxAge)) {
             newErrors.age = 'Define el rango de edad';
           }
         }
         break;
-      case 4: // Premios - FOR BOTH INDIVIDUAL AND TEAM TOURNAMENTS
+      case 4:
         if (isTeam) {
           if (!formData.firstPrize) newErrors.firstPrize = '1er premio es obligatorio';
           if (!formData.secondPrize) newErrors.secondPrize = '2do premio es obligatorio';
         }
         break;
-      case 5: // Información de contacto - FOR BOTH INDIVIDUAL AND TEAM TOURNAMENTS
+      case 5:
         if (isTeam) {
           if (!formData.contact) newErrors.contact = 'Contacto es obligatorio';
           if (!formData.phone) newErrors.phone = 'Teléfono es obligatorio';
@@ -339,122 +417,89 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     if (validateStep(activeStep)) {
       const isTeam = formData.type === 'team';
       
-      // Validate and format dates properly
-      const validateDate = (dateString: string): string => {
-        if (!dateString) {
-          throw new Error('Date is required');
-        }
-        
-        // Check if the date is in YYYY-MM-DD format
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(dateString)) {
-          throw new Error('Invalid date format');
-        }
-        
-        // Validate that it's a real date
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-          throw new Error('Invalid date');
-        }
-        
-        return dateString;
-      };
-
-      const validateTime = (timeString: string): string => {
-        if (!timeString) {
-          throw new Error('Time is required');
-        }
-        
-        // Check if the time is in HH:MM format
-        const timeRegex = /^\d{2}:\d{2}$/;
-        if (!timeRegex.test(timeString)) {
-          throw new Error('Invalid time format');
-        }
-        
-        return timeString;
-      };
-
       try {
-        const validDate = validateDate(formData.date);
-        const validTime = validateTime(formData.time);
-        const validRegistrationDeadline = validateDate(formData.registrationDeadline);
+        const validDate = formData.date;
+        const validTime = formData.time;
+        const validRegistrationDeadline = formData.registrationDeadline;
 
-        // Mapear los datos del formulario al formato esperado por la API
+        // FIXED: Proper data mapping for API
         const tournamentData: Partial<Tournament> = {
           name: formData.name,
           description: `${isTeam ? 'Torneo por Equipos' : 'Torneo Individual'} - ${isTeam ? formData.teamEliminationType : formData.eliminationType}`,
-          tournament_type: (isTeam ? 'team' : 'individual') as 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss',
+          tournament_type: isTeam
+            ? (formData.teamEliminationType as 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss')
+            : (formData.eliminationType as 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss'),
           start_date: `${validDate}T${validTime}:00`,
           end_date: `${validDate}T23:59:59`,
           registration_deadline: `${validRegistrationDeadline}T23:59:59`,
           max_participants: isTeam ? formData.numberOfTeams : formData.maxParticipants,
           entry_fee: 0,
-          status: 'draft' as const,
+          status: 'upcoming',
           club_id: currentClub?.id,
           
-          // Campos básicos
-          ...(formData.code && { code: formData.code }),
-          ...(formData.country && { country: formData.country }),
-          ...(formData.province && { province: formData.province }),
-          ...(formData.city && { city: formData.city }),
-          ...(formData.clubName && { club_name: formData.clubName }),
-          ...(formData.clubAddress && { club_address: formData.clubAddress }),
-          ...(formData.imagePreview && { image: formData.imagePreview }),
+          // FIXED: Send code as number
+          code: formData.code,
           
           // Campos específicos según tipo
           ...(isTeam ? {
             // Campos para equipos
-            ...(formData.playersPerTeam && { team_size: formData.playersPerTeam }),
-            ...(formData.teamAgeFilter && formData.teamMinAge && { min_age: parseInt(formData.teamMinAge) }),
-            ...(formData.teamAgeFilter && formData.teamMaxAge && { max_age: parseInt(formData.teamMaxAge) }),
-            ...(formData.teamGender !== 'mixed' && { gender_restriction: formData.teamGender }),
-            skill_level: 'intermediate' as const,
+            team_size: formData.playersPerTeam,
+            min_age: formData.teamAgeFilter && formData.teamMinAge && formData.teamMinAge !== 'todos' ? parseInt(formData.teamMinAge) : null,
+            max_age: formData.teamAgeFilter && formData.teamMaxAge && formData.teamMaxAge !== 'todos' ? parseInt(formData.teamMaxAge) : null,
+            gender_restriction: formData.teamGender !== 'mixed' ? formData.teamGender : null,
+            skill_level: 'intermediate',
             
             // Premios
-            ...(formData.firstPrize && { first_prize: formData.firstPrize }),
-            ...(formData.secondPrize && { second_prize: formData.secondPrize }),
-            ...(formData.thirdPrize && { third_prize: formData.thirdPrize }),
-            ...(formData.fourthPrize && { fourth_prize: formData.fourthPrize }),
-            ...(formData.fifthPrize && { fifth_prize: formData.fifthPrize }),
+            first_prize: formData.firstPrize || null,
+            second_prize: formData.secondPrize || null,
+            third_prize: formData.thirdPrize || null,
+            fourth_prize: formData.fourthPrize || null,
+            fifth_prize: formData.fifthPrize || null,
             
             // Contacto
-            ...(formData.contact && { contact_name: formData.contact }),
-            ...(formData.phone && { contact_phone: formData.phone }),
-            ...(formData.ballInfo && { ball_info: formData.ballInfo })
+            contact_name: formData.contact || null,
+            contact_phone: formData.phone || null,
+            ball_info: formData.ballInfo || null
           } : {
             // Campos para individual
-            ...(formData.modality !== undefined && { modality: formData.modality ? 'singles' : 'doubles' }),
-            ...(formData.eliminationType && { 
-              elimination_type: formData.eliminationType === 'single' ? 'simple_elimination' :
-                               formData.eliminationType === 'direct' ? 'direct_elimination' :
-                               formData.eliminationType === 'round_robin' ? 'round_robin' : 'mixed'
-            }),
-            ...(formData.rankingFilter && formData.minRanking && { min_ranking: parseInt(formData.minRanking) }),
-            ...(formData.rankingFilter && formData.maxRanking && { max_ranking: parseInt(formData.maxRanking) }),
-            ...(formData.scheduledReminder && { reminder_days: formData.reminderDays }),
+            modality: formData.modality ? 'singles' : 'doubles',
+            min_ranking: formData.rankingFilter && formData.minRanking && formData.minRanking !== 'todos' ? formData.minRanking : null,
+            max_ranking: formData.rankingFilter && formData.maxRanking && formData.maxRanking !== 'todos' ? formData.maxRanking : null,
+            reminder_days: formData.scheduledReminder ? formData.reminderDays : null,
             
             // Premios para individual
-            ...(formData.firstPrize && { first_prize: formData.firstPrize }),
-            ...(formData.secondPrize && { second_prize: formData.secondPrize }),
-            ...(formData.thirdPrize && { third_prize: formData.thirdPrize }),
-            ...(formData.fourthPrize && { fourth_prize: formData.fourthPrize }),
-            ...(formData.fifthPrize && { fifth_prize: formData.fifthPrize }),
+            first_prize: formData.firstPrize || null,
+            second_prize: formData.secondPrize || null,
+            third_prize: formData.thirdPrize || null,
+            fourth_prize: formData.fourthPrize || null,
+            fifth_prize: formData.fifthPrize || null,
             
             // Contacto para individual
-            ...(formData.contact && { contact_name: formData.contact }),
-            ...(formData.phone && { contact_phone: formData.phone }),
-            ...(formData.ballInfo && { ball_info: formData.ballInfo })
+            contact_name: formData.contact || null,
+            contact_phone: formData.phone || null,
+            ball_info: formData.ballInfo || null
           })
         };
+        
+        // Remove null values to avoid sending unnecessary data
+        Object.keys(tournamentData).forEach(key => {
+          const typedKey = key as keyof Tournament;
+          if (
+            tournamentData[typedKey] === null ||
+            tournamentData[typedKey] === undefined ||
+            tournamentData[typedKey] === ''
+          ) {
+            delete tournamentData[typedKey];
+          }
+        });
         
         console.log('🏆 Submitting tournament data:', tournamentData);
         onSubmit(tournamentData);
       } catch (error) {
-        console.error('❌ Date validation error:', error);
+        console.error('❌ Data preparation error:', error);
         setErrors(prev => ({
           ...prev,
-          date: 'Por favor, verifica que las fechas sean válidas',
-          registrationDeadline: 'Por favor, verifica que las fechas sean válidas'
+          date: 'Por favor, verifica que los datos sean válidos'
         }));
       }
     }
@@ -464,21 +509,21 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
     setActiveStep(0);
     setFormData({
       type: '',
-      code: '',
+      code: 0,
       name: '',
       date: '',
       time: '',
       registrationDeadline: '',
-      country: 'Argentina',
+      country: 'Ecuador',
       province: '',
       city: '',
       clubName: '',
       clubAddress: '',
       modality: true,
       matchType: 'best_of_3',
-      eliminationType: 'single',
+      eliminationType: 'groups',
       maxParticipants: 32,
-      seedingType: 'ranking',
+      seedingType: 'random',
       rankingFilter: false,
       minRanking: '',
       maxRanking: '',
@@ -615,15 +660,23 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <TextField
                   label="Código del Torneo"
+                  type="number"
                   value={formData.code}
-                  disabled
+                  onChange={(e) => handleInputChange('code', parseInt(e.target.value) || 0)}
+                  error={!!errors.code}
+                  helperText={errors.code || 'Código numérico único del torneo'}
                   fullWidth
+                  required
+                  slotProps={{
+                    htmlInput: { min: 1 }
+                  }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
                           onClick={() => handleInputChange('code', generateTournamentCode())}
                           size="small"
+                          title="Generar código aleatorio"
                         >
                           <Refresh />
                         </IconButton>
@@ -709,7 +762,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                   helperText={errors.date}
                   fullWidth
                   required
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{
+                    inputLabel: { shrink: true }
+                  }}
                 />
                 <TextField
                   label="Hora"
@@ -720,7 +775,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                   helperText={errors.time}
                   fullWidth
                   required
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{
+                    inputLabel: { shrink: true }
+                  }}
                 />
               </Stack>
 
@@ -734,7 +791,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                 helperText={errors.registrationDeadline}
                 fullWidth
                 required
-                InputLabelProps={{ shrink: true }}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
             </Stack>
           </Box>
@@ -788,7 +847,6 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                       <MenuItem value="groups">Por Grupos</MenuItem>
                       <MenuItem value="direct_elimination">Eliminación Directa</MenuItem>
                       <MenuItem value="round_robin">Todos contra Todos</MenuItem>
-                      <MenuItem value="mixed">Mixto</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -890,24 +948,72 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                         label="Filtrar por Ranking"
                       />
                       
-                      {formData.teamRankingFilter && (
-                        <Stack direction="row" spacing={2}>
-                          <TextField
-                            label="Ranking Mínimo"
-                            type="number"
-                            value={formData.teamMinRanking}
-                            onChange={(e) => handleInputChange('teamMinRanking', e.target.value)}
-                            size="small"
-                            inputProps={{ min: 1000, max: 5000 }}
-                          />
-                          <TextField
-                            label="Ranking Máximo"
-                            type="number"
-                            value={formData.teamMaxRanking}
-                            onChange={(e) => handleInputChange('teamMaxRanking', e.target.value)}
-                            size="small"
-                            inputProps={{ min: 1000, max: 5000 }}
-                          />
+                      {formData.teamRankingFilter ? (
+                        // Switch activado - Solo mostrar "Todos"
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'primary.50', 
+                          borderRadius: 1, 
+                          border: '1px solid',
+                          borderColor: 'primary.200'
+                        }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              color: 'primary.main',
+                              textAlign: 'center'
+                            }}
+                          >
+                            ✓ Todos los rankings incluidos
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              textAlign: 'center',
+                              display: 'block',
+                              mt: 0.5
+                            }}
+                          >
+                            No se aplicará filtro de ranking
+                          </Typography>
+                        </Box>
+                      ) : (
+                        // Switch desactivado - Mostrar dropdowns de filtrado
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Desde</Typography>
+                          <FormControl sx={{ minWidth: 120 }}>
+                            <Select
+                              value={formData.teamMinRanking}
+                              onChange={(e) => handleInputChange('teamMinRanking', e.target.value)}
+                              size="small"
+                              displayEmpty
+                            >
+                              <MenuItem value="">Seleccionar</MenuItem>
+                              {RANKING_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Hasta</Typography>
+                          <FormControl sx={{ minWidth: 120 }}>
+                            <Select
+                              value={formData.teamMaxRanking}
+                              onChange={(e) => handleInputChange('teamMaxRanking', e.target.value)}
+                              size="small"
+                              displayEmpty
+                            >
+                              <MenuItem value="">Seleccionar</MenuItem>
+                              {RANKING_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
                         </Stack>
                       )}
 
@@ -921,24 +1027,61 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                         label="Filtrar por Edad"
                       />
 
-                      {formData.teamAgeFilter && (
-                        <Stack direction="row" spacing={2}>
+                      {formData.teamAgeFilter ? (
+                        // Switch activado - Solo mostrar "Todos"
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'success.50', 
+                          borderRadius: 1, 
+                          border: '1px solid',
+                          borderColor: 'success.200'
+                        }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              color: 'success.main',
+                              textAlign: 'center'
+                            }}
+                          >
+                            ✓ Todas las edades incluidas
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              textAlign: 'center',
+                              display: 'block',
+                              mt: 0.5
+                            }}
+                          >
+                            No se aplicará filtro de edad
+                          </Typography>
+                        </Box>
+                      ) : (
+                        // Switch desactivado - Mostrar campos numéricos editables
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Desde</Typography>
                           <TextField
-                            label="Edad Mínima"
                             type="number"
                             value={formData.teamMinAge}
                             onChange={(e) => handleInputChange('teamMinAge', e.target.value)}
                             size="small"
                             inputProps={{ min: 5, max: 100 }}
+                            sx={{ width: 100 }}
+                            placeholder="Edad mín"
                           />
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Hasta</Typography>
                           <TextField
-                            label="Edad Máxima"
                             type="number"
                             value={formData.teamMaxAge}
                             onChange={(e) => handleInputChange('teamMaxAge', e.target.value)}
                             size="small"
                             inputProps={{ min: 5, max: 100 }}
+                            sx={{ width: 100 }}
+                            placeholder="Edad máx"
                           />
+                          <Typography variant="body2" color="text.secondary">años</Typography>
                         </Stack>
                       )}
                     </Stack>
@@ -1054,10 +1197,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                       onChange={(e) => handleInputChange('eliminationType', e.target.value)}
                       label="Tipo de Eliminación"
                     >
-                      <MenuItem value="single">Eliminación Simple</MenuItem>
-                      <MenuItem value="direct">Eliminación Directa</MenuItem>
+                      <MenuItem value="groups">Por Grupos</MenuItem>
+                      <MenuItem value="direct_elimination">Eliminación Directa</MenuItem>
                       <MenuItem value="round_robin">Todos contra Todos</MenuItem>
-                      <MenuItem value="mixed">Mixto</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -1079,9 +1221,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                       onChange={(e) => handleInputChange('seedingType', e.target.value)}
                       label="Tipo de Siembra"
                     >
-                      <MenuItem value="ranking">Por Ranking</MenuItem>
                       <MenuItem value="random">Aleatorio</MenuItem>
-                      <MenuItem value="manual">Manual</MenuItem>
+                      <MenuItem value="sequential">Secuencial</MenuItem>
+                      <MenuItem value="traditional">Tradicional</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -1100,26 +1242,72 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                         label="Filtrar por Ranking"
                       />
                       
-                      {formData.rankingFilter && (
-                        <Stack direction="row" spacing={2}>
-                          <TextField
-                            label="Ranking Desde"
-                            type="number"
-                            value={formData.minRanking}
-                            onChange={(e) => handleInputChange('minRanking', e.target.value)}
-                            size="small"
-                            inputProps={{ min: 1000, max: 5000 }}
-                            placeholder="1000"
-                          />
-                          <TextField
-                            label="Ranking Hasta"
-                            type="number"
-                            value={formData.maxRanking}
-                            onChange={(e) => handleInputChange('maxRanking', e.target.value)}
-                            size="small"
-                            inputProps={{ min: 1000, max: 5000 }}
-                            placeholder="5000"
-                          />
+                      {formData.rankingFilter ? (
+                        // Switch activado - Solo mostrar "Todos"
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'primary.50', 
+                          borderRadius: 1, 
+                          border: '1px solid',
+                          borderColor: 'primary.200'
+                        }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              color: 'primary.main',
+                              textAlign: 'center'
+                            }}
+                          >
+                            ✓ Todos los rankings incluidos
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              textAlign: 'center',
+                              display: 'block',
+                              mt: 0.5
+                            }}
+                          >
+                            No se aplicará filtro de ranking
+                          </Typography>
+                        </Box>
+                      ) : (
+                        // Switch desactivado - Mostrar dropdowns de filtrado
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Desde</Typography>
+                          <FormControl sx={{ minWidth: 120 }}>
+                            <Select
+                              value={formData.minRanking}
+                              onChange={(e) => handleInputChange('minRanking', e.target.value)}
+                              size="small"
+                              displayEmpty
+                            >
+                              <MenuItem value="">Seleccionar</MenuItem>
+                              {RANKING_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Hasta</Typography>
+                          <FormControl sx={{ minWidth: 120 }}>
+                            <Select
+                              value={formData.maxRanking}
+                              onChange={(e) => handleInputChange('maxRanking', e.target.value)}
+                              size="small"
+                              displayEmpty
+                            >
+                              <MenuItem value="">Seleccionar</MenuItem>
+                              {RANKING_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
                         </Stack>
                       )}
                       
@@ -1133,24 +1321,61 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                         label="Filtrar por Edad"
                       />
 
-                      {formData.ageFilter && (
-                        <Stack direction="row" spacing={2}>
+                      {formData.ageFilter ? (
+                        // Switch activado - Solo mostrar "Todos"
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'success.50', 
+                          borderRadius: 1, 
+                          border: '1px solid',
+                          borderColor: 'success.200'
+                        }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              color: 'success.main',
+                              textAlign: 'center'
+                            }}
+                          >
+                            ✓ Todas las edades incluidas
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              textAlign: 'center',
+                              display: 'block',
+                              mt: 0.5
+                            }}
+                          >
+                            No se aplicará filtro de edad
+                          </Typography>
+                        </Box>
+                      ) : (
+                        // Switch desactivado - Mostrar campos numéricos editables
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Desde</Typography>
                           <TextField
-                            label="Edad Mínima"
                             type="number"
                             value={formData.minAge}
                             onChange={(e) => handleInputChange('minAge', e.target.value)}
                             size="small"
                             inputProps={{ min: 5, max: 100 }}
+                            sx={{ width: 100 }}
+                            placeholder="Edad mín"
                           />
+                          <Typography variant="body2" sx={{ minWidth: 50 }}>Hasta</Typography>
                           <TextField
-                            label="Edad Máxima"
                             type="number"
                             value={formData.maxAge}
                             onChange={(e) => handleInputChange('maxAge', e.target.value)}
                             size="small"
                             inputProps={{ min: 5, max: 100 }}
+                            sx={{ width: 100 }}
+                            placeholder="Edad máx"
                           />
+                          <Typography variant="body2" color="text.secondary">años</Typography>
                         </Stack>
                       )}
                     </Stack>
@@ -1501,43 +1726,8 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                 value={formData.fifthPrize}
                 onChange={(e) => handleInputChange('fifthPrize', e.target.value)}
                 fullWidth
-                sx={{ maxWidth: { md: '50%' } }}
-                placeholder="Ej: $250, Diploma, etc."
+                placeholder="Ej: $250, Reconocimiento, etc."
               />
-
-              {/* Preview de premios */}
-              <Card sx={{ p: 3, backgroundColor: 'grey.50' }}>
-                <Typography variant="h6" gutterBottom align="center">
-                  Estructura de Premios
-                </Typography>
-                <Stack spacing={2}>
-                  {[
-                    { position: '1er Lugar', prize: formData.firstPrize, icon: '🥇' },
-                    { position: '2do Lugar', prize: formData.secondPrize, icon: '🥈' },
-                    { position: '3er Lugar', prize: formData.thirdPrize, icon: '🥉' },
-                    { position: '4to Lugar', prize: formData.fourthPrize, icon: '🏆' },
-                    { position: '5to Lugar', prize: formData.fifthPrize, icon: '🏆' }
-                  ].map((item, index) => (
-                    item.prize && (
-                      <Stack key={index} direction="row" alignItems="center" spacing={2}>
-                        <Typography variant="h6">{item.icon}</Typography>
-                        <Typography variant="body1" sx={{ flex: 1 }}>
-                          {item.position}
-                        </Typography>
-                        <Typography variant="h6" color="success.main">
-                          {item.prize}
-                        </Typography>
-                      </Stack>
-                    )
-                  ))}
-                  {!formData.firstPrize && !formData.secondPrize && !formData.thirdPrize && 
-                   !formData.fourthPrize && !formData.fifthPrize && (
-                    <Typography variant="body2" color="text.secondary" align="center">
-                      No se han definido premios aún
-                    </Typography>
-                  )}
-                </Stack>
-              </Card>
             </Stack>
           </Box>
         );
@@ -1550,6 +1740,13 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
               Información de Contacto
             </Typography>
             <Stack spacing={3}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {isTeam 
+                  ? 'Proporciona información de contacto para los participantes del torneo por equipos.'
+                  : 'Proporciona información de contacto para los participantes del torneo individual.'
+                }
+              </Alert>
+              
               <TextField
                 label="Contacto"
                 value={formData.contact}
@@ -1569,11 +1766,11 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                 helperText={errors.phone}
                 fullWidth
                 required={isTeam}
-                placeholder="+54 9 11 1234-5678"
+                placeholder="Número de teléfono de contacto"
               />
 
               <TextField
-                label="Ball Info"
+                label="Información de Pelotas"
                 value={formData.ballInfo}
                 onChange={(e) => handleInputChange('ballInfo', e.target.value)}
                 error={!!errors.ballInfo}
@@ -1584,45 +1781,12 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                 rows={3}
                 placeholder="Información sobre las pelotas a utilizar en el torneo"
               />
-
-              {/* Preview de información de contacto */}
-              <Card sx={{ p: 3, backgroundColor: 'grey.50' }}>
-                <Typography variant="h6" gutterBottom>
-                  Información de Contacto
-                </Typography>
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                      Contacto:
-                    </Typography>
-                    <Typography variant="body1">
-                      {formData.contact || 'No especificado'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                      Teléfono:
-                    </Typography>
-                    <Typography variant="body1">
-                      {formData.phone || 'No especificado'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" alignItems="flex-start" spacing={2}>
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                      Ball Info:
-                    </Typography>
-                    <Typography variant="body1">
-                      {formData.ballInfo || 'No especificado'}
-                    </Typography>
-                  </Stack>
-                </Stack>
-              </Card>
             </Stack>
           </Box>
         );
 
       default:
-        return null;
+        return <Box>Step content for step {step}</Box>;
     }
   };
 
@@ -1632,37 +1796,38 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
       onClose={handleClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{
-        sx: { minHeight: '70vh' }
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 3,
+            minHeight: '80vh'
+          }
+        }
       }}
     >
-      <DialogTitle>
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Avatar sx={{ bgcolor: 'primary.main' }}>
-            {formData.type === 'team' ? <Groups /> : <EmojiEvents />}
-          </Avatar>
-          <Box>
-            <Typography variant="h6">
-              {tournament ? 'Editar Torneo' : 'Crear Nuevo Torneo'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {formData.type === 'individual' ? 'Torneo Individual' : 
-               formData.type === 'team' ? 'Torneo por Equipos' : 'Configuración de torneo'}
-            </Typography>
-          </Box>
-        </Stack>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Typography variant="h5" component="div" fontWeight="bold">
+          {tournament ? 'Editar Torneo' : 'Crear Nuevo Torneo'}
+        </Typography>
+        {formData.type && (
+          <Typography variant="body2" color="text.secondary">
+            {formData.type === 'team' ? 'Torneo por Equipos' : 'Torneo Individual'}
+          </Typography>
+        )}
       </DialogTitle>
 
-      <DialogContent>
-        <Box sx={{ mb: 3 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
+      <DialogContent sx={{ px: 3, py: 2 }}>
+        {formData.type && (
+          <Box sx={{ mb: 3 }}>
+            <Stepper activeStep={activeStep} alternativeLabel>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -1677,28 +1842,30 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
         </AnimatePresence>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3 }}>
-        <Button onClick={handleClose}>
+      <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+        <Button onClick={handleClose} color="inherit">
           Cancelar
         </Button>
+        
         {activeStep > 0 && (
-          <Button onClick={handleBack}>
+          <Button onClick={handleBack} variant="outlined">
             Atrás
           </Button>
         )}
+        
         {activeStep < steps.length - 1 ? (
-          <Button
+          <Button 
+            onClick={handleNext} 
             variant="contained"
-            onClick={handleNext}
-            disabled={activeStep === 0 && !formData.type}
+            disabled={!formData.type && activeStep === 0}
           >
             Siguiente
           </Button>
         ) : (
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            color="primary"
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            color="success"
           >
             {tournament ? 'Actualizar Torneo' : 'Crear Torneo'}
           </Button>

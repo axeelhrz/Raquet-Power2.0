@@ -1,6 +1,17 @@
 'use client';
 
-import Modal from './Modal';
+import { 
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Box,
+  Stack,
+  Avatar
+} from '@mui/material';
+import { motion } from 'framer-motion';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -22,58 +33,222 @@ export default function DeleteConfirmationModal({
   isDeleting = false,
 }: DeleteConfirmationModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <div className="space-y-4">
-        {/* Warning Icon */}
-        <div className="flex justify-center">
-          <div className="rounded-full bg-red-100 p-3">
-            <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-        </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          backdropFilter: 'blur(20px)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+        }
+      }}
+      BackdropProps={{
+        sx: {
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(8px)',
+        }
+      }}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: 'flex-start',
+          paddingTop: '10vh',
+        }
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: -20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: -20 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
+            {title}
+          </Typography>
+        </DialogTitle>
 
-        {/* Message */}
-        <div className="text-center space-y-2">
-          <p className="text-gray-600">{message}</p>
-          {itemName && (
-            <p className="font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
-              &quot;{itemName}&quot;
-            </p>
-          )}
-          <p className="text-sm text-gray-500">Esta acción no se puede deshacer.</p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="flex-1 px-4 py-3 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 flex items-center justify-center gap-2"
-          >
-            {isDeleting ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Stack spacing={3} alignItems="center">
+            {/* Warning Icon */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+            >
+              <Avatar
+                sx={{
+                  width: 80,
+                  height: 80,
+                  backgroundColor: 'error.50',
+                  border: '3px solid',
+                  borderColor: 'error.100',
+                }}
+              >
+                <svg 
+                  className="h-10 w-10" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  style={{ color: 'var(--mui-palette-error-main)' }}
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" 
+                  />
                 </svg>
-                Eliminando...
-              </>
-            ) : (
-              'Eliminar'
-            )}
-          </button>
-        </div>
-      </div>
-    </Modal>
+              </Avatar>
+            </motion.div>
+
+            {/* Message */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  color: 'text.secondary', 
+                  mb: 2,
+                  fontSize: '1.1rem',
+                  lineHeight: 1.6
+                }}
+              >
+                {message}
+              </Typography>
+              
+              {itemName && (
+                <Box
+                  sx={{
+                    backgroundColor: 'grey.50',
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    borderRadius: 2,
+                    px: 3,
+                    py: 2,
+                    mb: 2,
+                  }}
+                >
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    &quot;{itemName}&quot;
+                  </Typography>
+                </Box>
+              )}
+              
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontStyle: 'italic'
+                }}
+              >
+                Esta acción no se puede deshacer.
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
+            <Button
+              onClick={onClose}
+              disabled={isDeleting}
+              variant="outlined"
+              size="large"
+              sx={{
+                flex: 1,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: 'none',
+                borderColor: 'grey.300',
+                color: 'text.secondary',
+                '&:hover': {
+                  borderColor: 'grey.400',
+                  backgroundColor: 'grey.50',
+                },
+                '&:disabled': {
+                  opacity: 0.6,
+                },
+              }}
+            >
+              Cancelar
+            </Button>
+            
+            <Button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              variant="contained"
+              size="large"
+              sx={{
+                flex: 1,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: 'none',
+                backgroundColor: 'error.main',
+                color: 'white',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                '&:hover': {
+                  backgroundColor: 'error.dark',
+                  boxShadow: '0 6px 16px rgba(239, 68, 68, 0.4)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:disabled': {
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {isDeleting ? (
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <svg 
+                      className="h-5 w-5" 
+                      fill="none" 
+                      viewBox="0 0 24 24"
+                      style={{ color: 'white' }}
+                    >
+                      <circle 
+                        className="opacity-25" 
+                        cx="12" 
+                        cy="12" 
+                        r="10" 
+                        stroke="currentColor" 
+                        strokeWidth="4"
+                      />
+                      <path 
+                        className="opacity-75" 
+                        fill="currentColor" 
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  </motion.div>
+                  <Typography>Eliminando...</Typography>
+                </Stack>
+              ) : (
+                'Eliminar'
+              )}
+            </Button>
+          </Stack>
+        </DialogActions>
+      </motion.div>
+    </Dialog>
   );
 }

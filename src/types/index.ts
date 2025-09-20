@@ -405,6 +405,7 @@ export interface Tournament {
   id: number;
   name: string;
   description?: string;
+  code?: number;
   start_date: string;
   end_date: string;
   registration_deadline: string;

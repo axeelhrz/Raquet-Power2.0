@@ -54,6 +54,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Tournament, Club } from '@/types';
 import TournamentModal from '@/components/tournaments/TournamentModal';
+import TournamentDetailsModal from '@/components/tournaments/TournamentDetailsModal';
 import DeleteConfirmationModal from '@/components/ui/DeleteConfirmationModal';
 import axios from '@/lib/axios';
 
@@ -85,6 +86,7 @@ export default function ClubTournamentsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const hasInitialized = useRef(false);
@@ -278,6 +280,11 @@ export default function ClubTournamentsPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openDetailsModal = (tournament: Tournament) => {
+    setSelectedTournament(tournament);
+    setIsDetailsModalOpen(true);
+  };
+
   const handleCreateTournament = async (tournamentData: Partial<Tournament>) => {
     try {
       console.log('🏆 Creating tournament with data:', tournamentData);
@@ -290,11 +297,54 @@ export default function ClubTournamentsPage() {
       const response = await axios.post('/api/tournaments', tournamentData);
       console.log('✅ Tournament created successfully:', response.data);
       
-      await fetchData(true);
-      setIsCreateModalOpen(false);
-    } catch (error) {
+      // Check if response has success flag and data
+      if (response.data.success) {
+        await fetchData(true);
+        setIsCreateModalOpen(false);
+        
+        // Show success message
+        alert('Torneo creado exitosamente');
+      } else {
+        throw new Error(response.data.message || 'Error creating tournament');
+      }
+    } catch (error: unknown) {
       console.error('❌ Error creating tournament:', error);
-      alert('Error al crear torneo');
+
+      // Handle different types of errors
+      interface AxiosErrorWithResponse {
+        response?: {
+          data?: {
+            errors?: Record<string, string[]>;
+            message?: string;
+          };
+        };
+      }
+
+      const isAxiosErrorWithResponse = (err: unknown): err is AxiosErrorWithResponse =>
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as AxiosErrorWithResponse).response === 'object' &&
+        (err as AxiosErrorWithResponse).response !== null;
+
+      if (isAxiosErrorWithResponse(error)) {
+        const response = error.response;
+        if (response?.data?.errors) {
+          // Validation errors
+          const validationErrors = response.data.errors;
+          const errorMessages = Object.values(validationErrors).flat().join('\n');
+          alert(`Errores de validación:\n${errorMessages}`);
+        } else if (response?.data?.message) {
+          // Server error message
+          alert(`Error: ${response.data.message}`);
+        } else {
+          // Generic error
+          alert('Error al crear torneo. Por favor, intenta nuevamente.');
+        }
+      } else {
+        // Generic error
+        alert('Error al crear torneo. Por favor, intenta nuevamente.');
+      }
     }
   };
 
@@ -949,6 +999,7 @@ export default function ClubTournamentsPage() {
                                       size="small"
                                       startIcon={<EyeIcon style={{ width: 16, height: 16 }} />}
                                       sx={{ flex: 1 }}
+                                      onClick={() => openDetailsModal(tournament)}
                                     >
                                       Ver Detalles
                                     </Button>
@@ -1015,12 +1066,19 @@ export default function ClubTournamentsPage() {
         currentClub={currentClub}
       />
       
+      <TournamentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        tournament={selectedTournament}
+      />
+      
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteTournament}
         title="Eliminar Torneo"
-        message={`¿Estás seguro de que deseas eliminar el torneo "${selectedTournament?.name}"? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que deseas eliminar el torneo "${selectedTournament?.name}"?`}
+        itemName={selectedTournament?.name}
       />
 
       {/* Add CSS for spin animation */}
