@@ -138,7 +138,8 @@ export default function LigaTournamentsPage() {
     
     const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
     
-    const matchesSport = sportFilter === 'all' || tournament.sport_id.toString() === sportFilter;
+    // FIXED: Handle potentially undefined sport_id
+    const matchesSport = sportFilter === 'all' || (tournament.sport_id && tournament.sport_id.toString() === sportFilter);
     
     return matchesSearch && matchesStatus && matchesSport;
   });
@@ -149,7 +150,7 @@ export default function LigaTournamentsPage() {
     upcoming: tournaments.filter(t => t.status === 'upcoming').length,
     active: tournaments.filter(t => t.status === 'active').length,
     completed: tournaments.filter(t => t.status === 'completed').length,
-    participants: tournaments.reduce((sum, t) => sum + t.current_participants, 0)
+    participants: tournaments.reduce((sum, t) => sum + (t.current_participants || 0), 0)
   };
   // Handle create tournament
     const handleCreateTournament = async (e: React.FormEvent) => {
@@ -254,15 +255,15 @@ export default function LigaTournamentsPage() {
     setNewTournament({
       name: tournament.name,
       description: tournament.description || '',
-      league_id: tournament.league_id,
-      sport_id: tournament.sport_id,
+      league_id: tournament.league_id || leagueId || 0,
+      sport_id: tournament.sport_id || 0,
       start_date: tournament.start_date,
       end_date: tournament.end_date,
       registration_deadline: tournament.registration_deadline,
-      max_participants: tournament.max_participants,
-      entry_fee: tournament.entry_fee,
-      prize_pool: tournament.prize_pool,
-      tournament_format: tournament.tournament_format,
+      max_participants: tournament.max_participants || 16,
+      entry_fee: tournament.entry_fee || 0,
+      prize_pool: tournament.prize_pool || 0,
+      tournament_format: tournament.tournament_format || 'single_elimination',
       location: tournament.location || '',
       rules: tournament.rules || '',
       status: tournament.status
@@ -303,7 +304,8 @@ export default function LigaTournamentsPage() {
   };
 
   // Get sport name
-  const getSportName = (sportId: number) => {
+  const getSportName = (sportId?: number) => {
+    if (!sportId) return 'Deporte no especificado';
     const sport = sports.find(s => s.id === sportId);
     return sport?.name || 'Deporte desconocido';
   };
