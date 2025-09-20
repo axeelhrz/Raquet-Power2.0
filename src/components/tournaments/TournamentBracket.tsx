@@ -30,7 +30,8 @@ interface Match {
 }
 
 interface TournamentBracketProps {
-  tournamentType: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+  tournamentType: 'individual' | 'team';
+  tournamentFormat?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
   maxParticipants: number;
   currentParticipants: number;
   matches?: Match[];
@@ -38,6 +39,7 @@ interface TournamentBracketProps {
 
 export default function TournamentBracket({
   tournamentType,
+  tournamentFormat = 'single_elimination',
   maxParticipants,
   currentParticipants,
   matches = []
@@ -47,15 +49,15 @@ export default function TournamentBracket({
   const generateBracketStructure = () => {
     const participants = Math.min(maxParticipants, currentParticipants);
     
-    if (tournamentType === 'round_robin') {
+    if (tournamentFormat === 'round_robin') {
       return generateRoundRobinStructure(participants);
     }
     
-    if (tournamentType === 'single_elimination') {
+    if (tournamentFormat === 'single_elimination') {
       return generateSingleEliminationStructure(participants);
     }
     
-    if (tournamentType === 'double_elimination') {
+    if (tournamentFormat === 'double_elimination') {
       return generateDoubleEliminationStructure(participants);
     }
     
@@ -417,16 +419,16 @@ export default function TournamentBracket({
   return (
     <Card sx={{ border: '1px solid', borderColor: 'grey.200' }}>
       <CardContent sx={{ p: 0 }}>
-        {tournamentType === 'single_elimination' && renderSingleElimination(structure as Match[][])}
-        {tournamentType === 'double_elimination' && 
+        {tournamentFormat === 'single_elimination' && renderSingleElimination(structure as Match[][])}
+        {tournamentFormat === 'double_elimination' && 
           typeof structure === 'object' &&
           structure !== null &&
           'main' in structure &&
           'losers' in structure &&
           'final' in structure &&
           renderDoubleElimination(structure as { main: Match[][]; losers: Match[][]; final: Match[] })}
-        {tournamentType === 'round_robin' && renderRoundRobin(structure as Match[][])}
-        {tournamentType === 'swiss' && renderSingleElimination(structure as Match[][])}
+        {tournamentFormat === 'round_robin' && renderRoundRobin(structure as Match[][])}
+        {tournamentFormat === 'swiss_system' && renderSingleElimination(structure as Match[][])}
       </CardContent>
     </Card>
   );

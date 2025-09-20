@@ -405,7 +405,7 @@ export interface Tournament {
   id: number;
   name: string;
   description?: string;
-  code?: number;
+  code?: string;
   start_date: string;
   end_date: string;
   registration_deadline: string;
@@ -413,14 +413,19 @@ export interface Tournament {
   entry_fee?: number;
   prize_pool?: number;
   status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'draft' | 'open' | 'in_progress';
-  tournament_type: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
-  tournament_format: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
+  
+  // FIXED: Updated tournament_type to match backend expectations
+  tournament_type: 'individual' | 'team';
+  
+  // FIXED: tournament_format for the actual elimination type
+  tournament_format?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
+  
   club_id?: number;
   league_id?: number;
-  sport_id: number;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
+  sport_id?: number;
+  created_by?: number;
+  created_at?: string;
+  updated_at?: string;
   club?: Club;
   league?: League;
   creator?: User;
@@ -430,9 +435,73 @@ export interface Tournament {
   // Additional properties used in tournament management
   location?: string;
   rules?: string;
-  current_participants: number;
-  matches_played: number;
-  matches_total: number;
+  current_participants?: number;
+  matches_played?: number;
+  matches_total?: number;
+  
+  // Location fields
+  country?: string;
+  province?: string;
+  city?: string;
+  club_name?: string;
+  club_address?: string;
+  image?: string;
+  
+  // Individual tournament fields
+  modality?: 'singles' | 'doubles';
+  match_type?: string;
+  seeding_type?: string;
+  ranking_filter?: boolean;
+  min_ranking?: string;
+  max_ranking?: string;
+  age_filter?: boolean;
+  min_age?: number;
+  max_age?: number;
+  gender?: 'male' | 'female' | 'mixed';
+  affects_ranking?: boolean;
+  draw_lottery?: boolean;
+  system_invitation?: boolean;
+  scheduled_reminder?: boolean;
+  reminder_days?: number;
+  
+  // Team tournament fields
+  team_modality?: string;
+  team_match_type?: string;
+  team_elimination_type?: string;
+  players_per_team?: number;
+  max_ranking_between_players?: number;
+  categories?: string[];
+  number_of_teams?: number;
+  team_seeding_type?: string;
+  team_ranking_filter?: boolean;
+  team_min_ranking?: string;
+  team_max_ranking?: string;
+  team_age_filter?: boolean;
+  team_min_age?: number;
+  team_max_age?: number;
+  team_gender?: 'male' | 'female' | 'mixed';
+  team_affects_ranking?: boolean;
+  team_draw_lottery?: boolean;
+  team_system_invitation?: boolean;
+  team_scheduled_reminder?: boolean;
+  team_reminder_days?: number;
+  gender_restriction?: 'male' | 'female' | 'mixed';
+  skill_level?: 'beginner' | 'intermediate' | 'advanced' | 'professional';
+  team_size?: number;
+  
+  // Prize fields
+  first_prize?: string;
+  second_prize?: string;
+  third_prize?: string;
+  fourth_prize?: string;
+  fifth_prize?: string;
+  
+  // Contact fields
+  contact?: string;
+  phone?: string;
+  ball_info?: string;
+  contact_name?: string;
+  contact_phone?: string;
 }
 
 export interface TournamentParticipant {

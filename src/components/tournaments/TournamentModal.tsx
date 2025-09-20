@@ -426,9 +426,19 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
         const tournamentData: Partial<Tournament> = {
           name: formData.name,
           description: `${isTeam ? 'Torneo por Equipos' : 'Torneo Individual'} - ${isTeam ? formData.teamEliminationType : formData.eliminationType}`,
-          tournament_type: isTeam
-            ? (formData.teamEliminationType as 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss')
-            : (formData.eliminationType as 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss'),
+          
+          // FIXED: Send tournament_type as 'individual' or 'team' (not elimination type)
+          tournament_type: isTeam ? 'team' : 'individual',
+          
+          // FIXED: Send tournament_format with the actual elimination type
+          tournament_format: isTeam
+            ? (formData.teamEliminationType === 'groups' ? 'round_robin' : 
+               formData.teamEliminationType === 'direct_elimination' ? 'single_elimination' : 
+               formData.teamEliminationType === 'round_robin' ? 'round_robin' : 'single_elimination')
+            : (formData.eliminationType === 'groups' ? 'round_robin' : 
+               formData.eliminationType === 'direct_elimination' ? 'single_elimination' : 
+               formData.eliminationType === 'round_robin' ? 'round_robin' : 'single_elimination'),
+          
           start_date: `${validDate}T${validTime}:00`,
           end_date: `${validDate}T23:59:59`,
           registration_deadline: `${validRegistrationDeadline}T23:59:59`,
@@ -437,8 +447,15 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
           status: 'upcoming',
           club_id: currentClub?.id,
           
-          // FIXED: Send code as number
-          code: formData.code,
+          // FIXED: Send code as string
+          code: String(formData.code),
+          
+          // Location fields
+          country: formData.country,
+          province: formData.province,
+          city: formData.city,
+          club_name: formData.clubName,
+          club_address: formData.clubAddress,
           
           // Campos específicos según tipo
           ...(isTeam ? {
@@ -448,6 +465,28 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
             max_age: formData.teamAgeFilter && formData.teamMaxAge && formData.teamMaxAge !== 'todos' ? parseInt(formData.teamMaxAge) : null,
             gender_restriction: formData.teamGender !== 'mixed' ? formData.teamGender : null,
             skill_level: 'intermediate',
+            
+            // Team specific fields
+            team_modality: formData.teamModality,
+            team_match_type: formData.teamMatchType,
+            team_elimination_type: formData.teamEliminationType,
+            players_per_team: formData.playersPerTeam,
+            max_ranking_between_players: formData.maxRankingBetweenPlayers,
+            categories: formData.categories,
+            number_of_teams: formData.numberOfTeams,
+            team_seeding_type: formData.teamSeedingType,
+            team_ranking_filter: formData.teamRankingFilter,
+            team_min_ranking: formData.teamRankingFilter && formData.teamMinRanking && formData.teamMinRanking !== 'todos' ? formData.teamMinRanking : null,
+            team_max_ranking: formData.teamRankingFilter && formData.teamMaxRanking && formData.teamMaxRanking !== 'todos' ? formData.teamMaxRanking : null,
+            team_age_filter: formData.teamAgeFilter,
+            team_min_age: formData.teamAgeFilter && formData.teamMinAge && formData.teamMinAge !== 'todos' ? parseInt(formData.teamMinAge) : null,
+            team_max_age: formData.teamAgeFilter && formData.teamMaxAge && formData.teamMaxAge !== 'todos' ? parseInt(formData.teamMaxAge) : null,
+            team_gender: formData.teamGender,
+            team_affects_ranking: formData.teamAffectsRanking,
+            team_draw_lottery: formData.teamDrawLottery,
+            team_system_invitation: formData.teamSystemInvitation,
+            team_scheduled_reminder: formData.teamScheduledReminder,
+            team_reminder_days: formData.teamScheduledReminder ? formData.teamReminderDays : null,
             
             // Premios
             first_prize: formData.firstPrize || null,
@@ -463,8 +502,19 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
           } : {
             // Campos para individual
             modality: formData.modality ? 'singles' : 'doubles',
+            match_type: formData.matchType,
+            seeding_type: formData.seedingType,
+            ranking_filter: formData.rankingFilter,
             min_ranking: formData.rankingFilter && formData.minRanking && formData.minRanking !== 'todos' ? formData.minRanking : null,
             max_ranking: formData.rankingFilter && formData.maxRanking && formData.maxRanking !== 'todos' ? formData.maxRanking : null,
+            age_filter: formData.ageFilter,
+            min_age: formData.ageFilter && formData.minAge && formData.minAge !== 'todos' ? parseInt(formData.minAge) : null,
+            max_age: formData.ageFilter && formData.maxAge && formData.maxAge !== 'todos' ? parseInt(formData.maxAge) : null,
+            gender: formData.gender,
+            affects_ranking: formData.affectsRanking,
+            draw_lottery: formData.drawLottery,
+            system_invitation: formData.systemInvitation,
+            scheduled_reminder: formData.scheduledReminder,
             reminder_days: formData.scheduledReminder ? formData.reminderDays : null,
             
             // Premios para individual

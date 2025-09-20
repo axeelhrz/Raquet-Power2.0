@@ -89,14 +89,20 @@ export default function TournamentDetailsModal({
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'single_elimination': return 'Eliminación Simple';
-      case 'double_elimination': return 'Eliminación Doble';
-      case 'round_robin': return 'Todos contra Todos';
-      case 'swiss': return 'Sistema Suizo';
-      default: return type;
+  const getTypeLabel = (type: string, format?: string) => {
+    // First show if it's individual or team
+    const typeLabel = type === 'individual' ? 'Individual' : type === 'team' ? 'Por Equipos' : type;
+    
+    // Then show the format if available
+    if (format) {
+      const formatLabel = format === 'single_elimination' ? 'Eliminación Simple' :
+                         format === 'double_elimination' ? 'Eliminación Doble' :
+                         format === 'round_robin' ? 'Todos contra Todos' :
+                         format === 'swiss_system' ? 'Sistema Suizo' : format;
+      return `${typeLabel} - ${formatLabel}`;
     }
+    
+    return typeLabel;
   };
 
   const formatDate = (dateString: string) => {
@@ -487,6 +493,7 @@ export default function TournamentDetailsModal({
             <Box sx={{ mt: 2 }}>
               <TournamentBracket
                 tournamentType={tournament.tournament_type}
+                tournamentFormat={tournament.tournament_format}
                 maxParticipants={tournament.max_participants || 8}
                 currentParticipants={tournament.current_participants || 0}
               />
