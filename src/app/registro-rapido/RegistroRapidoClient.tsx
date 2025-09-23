@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ThemeProvider } from '@mui/material/styles';
@@ -13,17 +13,9 @@ import axios, { isAxiosError } from 'axios';
 import authTheme from '@/theme/authTheme';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthHeader from '@/components/auth/AuthHeader';
-import { useExistingClubs, useExistingLeagues } from '@/hooks/useExistingClubs';
-import { useDynamicOptions } from '@/hooks/useDynamicOptions';
 import CustomFieldValidator from '@/components/ui/CustomFieldValidator';
-import { FieldType } from '@/utils/customFieldValidation';
-
-// Define ValidationResult interface for validation states
-interface ValidationResult {
-  isValid: boolean;
-  message?: string;
-  suggestions?: string[];
-}
+import { validateCustomField, debounce, type FieldType, type ValidationResult } from '@/utils/customFieldValidation';
+import { useDynamicOptions } from '@/hooks/useDynamicOptions';
 
 const registroRapidoSchema = z.object({
   // Información personal básica - ACTUALIZADO: nombres y apellidos separados
@@ -376,15 +368,26 @@ interface ValidationStates {
 }
 
 const RegistroRapidoClient: React.FC = () => {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [registrationCode, setRegistrationCode] = useState('');
   const [registrationData, setRegistrationData] = useState<RegistrationData | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showCustomRacketBrand, setShowCustomRacketBrand] = useState(false);
+  const [showCustomRacketModel, setShowCustomRacketModel] = useState(false);
+  const [showCustomDriveRubberBrand, setShowCustomDriveRubberBrand] = useState(false);
+  const [showCustomDriveRubberModel, setShowCustomDriveRubberModel] = useState(false);
+  const [showCustomBackhandRubberBrand, setShowCustomBackhandRubberBrand] = useState(false);
+  const [showCustomBackhandRubberModel, setShowCustomBackhandRubberModel] = useState(false);
+  const [showCustomClub, setShowCustomClub] = useState(false);
+  const [showCustomLeague, setShowCustomLeague] = useState(false); // NUEVO: Estado para liga personalizada
+  const [showCustomDriveHardness, setShowCustomDriveHardness] = useState(false);
+  const [showCustomBackhandHardness, setShowCustomBackhandHardness] = useState(false);
+  
+  // ACTUALIZADO: Estados de validación con marcas compartidas
   const [validationStates, setValidationStates] = useState<ValidationStates>({
-    brand: null,
+    brand: null,  // Una sola validación para todas las marcas
     racketModel: null,
     driveRubberModel: null,
     backhandRubberModel: null,
@@ -393,47 +396,31 @@ const RegistroRapidoClient: React.FC = () => {
     club: null,
     league: null,
   });
-
-  // Custom field visibility states
-  const [showCustomLeague, setShowCustomLeague] = useState(false);
-  const [showCustomClub, setShowCustomClub] = useState(false);
-  const [showCustomRacketBrand, setShowCustomRacketBrand] = useState(false);
-  const [showCustomRacketModel, setShowCustomRacketModel] = useState(false);
-  const [showCustomDriveRubberBrand, setShowCustomDriveRubberBrand] = useState(false);
-  const [showCustomDriveRubberModel, setShowCustomDriveRubberModel] = useState(false);
-  const [showCustomDriveHardness, setShowCustomDriveHardness] = useState(false);
-  const [showCustomBackhandRubberBrand, setShowCustomBackhandRubberBrand] = useState(false);
-  const [showCustomBackhandRubberModel, setShowCustomBackhandRubberModel] = useState(false);
-  const [showCustomBackhandHardness, setShowCustomBackhandHardness] = useState(false);
-
-  // Use the existing clubs and leagues hooks separately
-  const {
-    clubs: existingClubs,
-    loading: clubsLoading,
-    error: clubsError,
-    searchClubs,
-    refetch: refetchClubs
-  } = useExistingClubs();
-
-  const {
-    leagues: existingLeagues,
-    loading: leaguesLoading,
-    error: leaguesError,
-    searchLeagues,
-    refetch: refetchLeagues
-  } = useExistingLeagues();
+  
+  const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
-    setValue,
     watch,
-    trigger,
+    setValue,
+    formState: { errors },
   } = useForm<RegistroRapidoFormValues>({
     resolver: zodResolver(registroRapidoSchema),
-    mode: 'onChange',
+    defaultValues: {
+      country: 'Ecuador',
+      // Datos por defecto especificados como placeholders
+      first_name: '',
+      second_name: '',
+      last_name: '',
+      second_last_name: '',
+      doc_id: '',
+      phone: '',
+    },
   });
+
+  const watchedProvince = watch('province');
+  const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
 
   // Dynamic options hooks - ACTUALIZADO: Incluir club y league
   const racketBrandOptions = useDynamicOptions('brand', POPULAR_BRANDS);
@@ -451,14 +438,15 @@ const RegistroRapidoClient: React.FC = () => {
     '593LATM'
   ]);
 
-  // Watch for province selection
-  const selectedProvinceName = watch('province');
-  const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === selectedProvinceName);
+  // State for league validation
+  const [leagueValidation, setLeagueValidation] = useState<ValidationResult | null>(null);
+  // State for club validation
+  const [clubValidation, setClubValidation] = useState<ValidationResult | null>(null);
 
   // Watch for club selection to show/hide club role field
   const watchedClubName = watch('club_name');
   const watchedClubNameCustom = watch('club_name_custom');
-  const hasClubSelected = (watchedClubName && watchedClubName !== '') || (watchedClubNameCustom && watchedClubNameCustom !== '');
+  const hasClubSelected = watchedClubName && watchedClubName !== '' || watchedClubNameCustom && watchedClubNameCustom !== '';
 
   // Handle photo selection
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -784,7 +772,7 @@ const RegistroRapidoClient: React.FC = () => {
           >
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l-7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
             </div>
             
@@ -844,7 +832,7 @@ const RegistroRapidoClient: React.FC = () => {
                 className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 py-4 px-6 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-bold text-lg border-2 border-gray-300 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Volver al Inicio
               </button>
@@ -864,8 +852,17 @@ const RegistroRapidoClient: React.FC = () => {
   return (
     <ThemeProvider theme={authTheme}>
       <CssBaseline />
-      <SnackbarProvider maxSnack={3}>
-        <AuthLayout>
+      <SnackbarProvider
+        maxSnack={3}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        preventDuplicate
+        dense
+        autoHideDuration={4000}
+      >
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -894,7 +891,7 @@ const RegistroRapidoClient: React.FC = () => {
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-400">
                         <svg className="h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93M3 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                     )}
@@ -903,7 +900,7 @@ const RegistroRapidoClient: React.FC = () => {
                       className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-3 cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0112.07 4h3.86a2 2 0 011.664.89l.812 1.22a2 2 0 001.664.89H20a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </label>
                     <input
@@ -920,7 +917,7 @@ const RegistroRapidoClient: React.FC = () => {
                 <div className="text-center">
                   <p className="text-sm text-gray-600 font-medium flex items-center justify-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93M3 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Foto opcional - Máximo 5MB (JPEG, PNG, GIF, WebP)
                   </p>
@@ -977,8 +974,8 @@ const RegistroRapidoClient: React.FC = () => {
                         type="text"
                         id="last_name"
                         placeholder="Pérez"
-                        className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles}`}
-                      />
+                        className={`${inputStyles} ${errors.last_name ? inputErrorStyles : inputNormalStyles }`}
+                                              />
                       {errors.last_name && (
                         <p className="text-sm text-red-700 font-semibold">{errors.last_name.message}</p>
                       )}
@@ -1144,7 +1141,7 @@ const RegistroRapidoClient: React.FC = () => {
                     Liga y Club
                   </h3>
                   
-                  {/* ACTUALIZADO: Renderizar campo de liga con detección de ligas existentes */}
+                  {/* ACTUALIZADO: Renderizar campo de liga con opciones dinámicas */}
                   <div className="space-y-2">
                     <label htmlFor="league" className={labelStyles}>
                       Liga
@@ -1155,6 +1152,7 @@ const RegistroRapidoClient: React.FC = () => {
                       className={`${inputStyles} ${inputNormalStyles}`}
                       onChange={(e) => {
                         setValue('league', e.target.value);
+                        setLeagueValidation(null);
                         const isCustom = e.target.value === 'other';
                         setShowCustomLeague(isCustom);
                         if (!isCustom) {
@@ -1163,57 +1161,15 @@ const RegistroRapidoClient: React.FC = () => {
                       }}
                     >
                       <option value="">Seleccionar liga</option>
-                      {/* Mostrar ligas existentes de la base de datos primero */}
-                      {existingLeagues
-                        .filter(league => league.source === 'database')
-                        .map((league) => (
-                          <option key={league.name} value={league.name} className="bg-green-50 text-green-800 font-bold">
-                            🏆 {league.display_name} (Registrada)
-                          </option>
-                        ))}
-                      {/* Separador visual si hay ligas de la BD */}
-                      {existingLeagues.some(l => l.source === 'database') && 
-                       existingLeagues.some(l => l.source === 'predefined') && (
-                        <option disabled className="bg-gray-100 text-gray-500">
-                          ──── Otras opciones ────
+                      {leagueOptions.options.map((league) => (
+                        <option key={league} value={league}>
+                          {league}
                         </option>
-                      )}
-                      {/* Mostrar ligas predefinidas */}
-                      {existingLeagues
-                        .filter(league => league.source === 'predefined')
-                        .map((league) => (
-                          <option key={league.name} value={league.name}>
-                            {league.name}
-                          </option>
-                        ))}
+                      ))}
                       <option value="other" className="bg-amber-50 text-amber-800 font-bold">
                         🏆 ¿Tu liga no está aquí? ¡Agrégala al listado!
                       </option>
                     </select>
-                    
-                    {/* Información sobre ligas existentes */}
-                    {existingLeagues.length > 0 && (
-                      <div className="text-xs text-gray-600 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                          {existingLeagues.filter(l => l.source === 'database').length > 0 
-                            ? `${existingLeagues.filter(l => l.source === 'database').length} ligas registradas encontradas`
-                            : `${existingLeagues.length} ligas disponibles`
-                          }
-                        </span>
-                      </div>
-                    )}
-                    
-                    {leaguesLoading && (
-                      <div className="text-xs text-blue-600 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span>Buscando ligas registradas...</span>
-                      </div>
-                    )}
                     
                     {/* Campo personalizado para liga */}
                     {showCustomLeague && (
@@ -1226,7 +1182,7 @@ const RegistroRapidoClient: React.FC = () => {
                         <div className="flex items-center gap-3 mb-3">
                           <div className="bg-amber-100 rounded-full p-2">
                             <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                           </div>
                           <div>
@@ -1257,9 +1213,21 @@ const RegistroRapidoClient: React.FC = () => {
                         </div>
                       </motion.div>
                     )}
+                    
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>
+                        {leagueOptions.options.length > 0 
+                          ? `${leagueOptions.options.length} ligas disponibles. ¿No encuentras la tuya? ¡Agrégala!`
+                          : 'Cargando lista de ligas...'
+                        }
+                      </span>
+                    </p>
                   </div>
                   
-                  {/* ACTUALIZADO: Renderizar campo de club con detección de clubes existentes */}
+                  {/* ACTUALIZADO: Renderizar campo de club con opciones dinámicas */}
                   <div className="space-y-2">
                     <label htmlFor="club_name" className={labelStyles}>Club</label>
                     <select
@@ -1268,6 +1236,7 @@ const RegistroRapidoClient: React.FC = () => {
                       className={`${inputStyles} ${inputNormalStyles}`}
                       onChange={(e) => {
                         setValue('club_name', e.target.value);
+                        setClubValidation(null);
                         const isCustom = e.target.value === 'other';
                         setShowCustomClub(isCustom);
                         if (!isCustom) {
@@ -1276,59 +1245,17 @@ const RegistroRapidoClient: React.FC = () => {
                       }}
                     >
                       <option value="">Seleccionar club</option>
-                      {/* Mostrar clubes existentes de la base de datos primero */}
-                      {existingClubs
-                        .filter(club => club.source === 'database')
-                        .map((club) => (
-                          <option key={club.name} value={club.name} className="bg-green-50 text-green-800 font-bold">
-                            🏓 {club.display_name} (Registrado)
-                          </option>
-                        ))}
-                      {/* Separador visual si hay clubes de la BD */}
-                      {existingClubs.some(c => c.source === 'database') && 
-                       existingClubs.some(c => c.source === 'predefined') && (
-                        <option disabled className="bg-gray-100 text-gray-500">
-                          ──── Otros clubes ────
+                      {clubOptions.options.map((club) => (
+                        <option key={club} value={club}>
+                          {club}
                         </option>
-                      )}
-                      {/* Mostrar clubes predefinidos */}
-                      {existingClubs
-                        .filter(club => club.source === 'predefined')
-                        .map((club) => (
-                          <option key={club.name} value={club.name}>
-                            {club.name}
-                          </option>
-                        ))}
+                      ))}
                       <option value="other" className="bg-amber-50 text-amber-800 font-bold">
                         🏓 ¿Tu club no está aquí? ¡Agrégalo al listado!
                       </option>
                     </select>
                     
-                    {/* Información sobre clubes existentes */}
-                    {existingClubs.length > 0 && (
-                      <div className="text-xs text-gray-600 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                          {existingClubs.filter(c => c.source === 'database').length > 0 
-                            ? `${existingClubs.filter(c => c.source === 'database').length} clubes registrados encontrados`
-                            : `${existingClubs.length} clubes disponibles`
-                          }
-                        </span>
-                      </div>
-                    )}
-                    
-                    {clubsLoading && (
-                      <div className="text-xs text-blue-600 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span>Buscando clubes registrados...</span>
-                      </div>
-                    )}
-                    
-                    {/* Campo personalizado para club */}
+                    {/* Campo personalizado para club - CORREGIDO: Siguiendo la misma lógica que marca de raqueta */}
                     {showCustomClub && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -1339,7 +1266,7 @@ const RegistroRapidoClient: React.FC = () => {
                         <div className="flex items-center gap-3 mb-3">
                           <div className="bg-amber-100 rounded-full p-2">
                             <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                           </div>
                           <div>
@@ -1473,7 +1400,7 @@ const RegistroRapidoClient: React.FC = () => {
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                     <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Raqueta - Palo
                   </h3>
@@ -1483,7 +1410,7 @@ const RegistroRapidoClient: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="bg-blue-100 rounded-full p-2">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                       <div>
@@ -1661,38 +1588,6 @@ const RegistroRapidoClient: React.FC = () => {
                   )}
                 </motion.div>
 
-                {/* Submit button */}
-                <div className="flex flex-col md:flex-row gap-4">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                                        <span>Registrando...</span>
-                      </div>
-                    ) : (
-                      'Registrar en el Censo'
-                    )}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => router.push('/censo-waiting-room')}
-                    className="flex-1 bg-gray-100 text-gray-800 py-4 px-6 rounded-xl hover:bg-gray-200 transition-all duration-200 font-bold text-lg border-2 border-gray-300 flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Ir a Sala de Espera
-                  </button>
-                </div>
-
                 {/* Caucho del Drive - ACTUALIZADO: Opciones independientes para marca y modelo */}
                 <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -1839,136 +1734,136 @@ const RegistroRapidoClient: React.FC = () => {
                         Incluye N/A si no conoces la dureza
                       </p>
                     </div>
+
+                    {/* Campo personalizado para marca */}
+                    {showCustomDriveRubberBrand && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-amber-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-amber-800">
+                              🏷️ Agregar Marca de Caucho Drive
+                            </h4>
+                            <p className="text-amber-700 text-sm font-medium">
+                              Escribe la marca de tu caucho drive y agrégala para que otros también puedan seleccionarla
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_drive_rubber_brand')}
+                            type="text"
+                            placeholder="Escribe la marca de tu caucho drive"
+                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="brand"
+                            value={watch('custom_drive_rubber_brand') || ''}
+                            onValidationResult={(result) => handleValidationResult('brand', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_brand', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomDriveRubberBrand}
+                            currentOptions={rubberDriveBrandOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para modelo */}
+                    {showCustomDriveRubberModel && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-cyan-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-cyan-800">
+                              🎯 Agregar Modelo de Caucho Drive
+                            </h4>
+                            <p className="text-cyan-700 text-sm font-medium">
+                              Escribe el modelo de tu caucho drive y agrégalo para que otros también puedan seleccionarlo
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_drive_rubber_model')}
+                            type="text"
+                            placeholder="Escribe el modelo de tu caucho drive"
+                            className="w-full px-4 py-3 border-2 border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="drive_rubber_model"
+                            value={watch('custom_drive_rubber_model') || ''}
+                            onValidationResult={(result) => handleValidationResult('driveRubberModel', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_model', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomDriveRubberModel}
+                            currentOptions={rubberDriveModelOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para hardness del drive */}
+                    {showCustomDriveHardness && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-purple-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-purple-800">
+                              💎 Agregar Hardness Drive
+                            </h4>
+                            <p className="text-purple-700 text-sm font-medium">
+                              Escribe el hardness de tu caucho drive y agrégalo para que otros también puedan seleccionarlo
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_drive_rubber_hardness')}
+                            type="text"
+                            placeholder="Ej: h41, Medium-Soft, 38°, etc."
+                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="drive_rubber_hardness"
+                            value={watch('custom_drive_rubber_hardness') || ''}
+                            onValidationResult={(result) => handleValidationResult('driveRubberHardness', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_hardness', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomDriveHardness}
+                            currentOptions={driveHardnessOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
-
-                  {/* Campo personalizado para marca */}
-                  {showCustomDriveRubberBrand && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-amber-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-amber-800">
-                            🏷️ Agregar Marca de Caucho Drive
-                          </h4>
-                          <p className="text-amber-700 text-sm font-medium">
-                            Escribe la marca de tu caucho drive y agrégala para que otros también puedan seleccionarla
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_drive_rubber_brand')}
-                          type="text"
-                          placeholder="Escribe la marca de tu caucho drive"
-                          className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="brand"
-                          value={watch('custom_drive_rubber_brand') || ''}
-                          onValidationResult={(result) => handleValidationResult('brand', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_brand', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomDriveRubberBrand}
-                          currentOptions={rubberDriveBrandOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Campo personalizado para modelo */}
-                  {showCustomDriveRubberModel && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-cyan-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-cyan-800">
-                            🎯 Agregar Modelo de Caucho Drive
-                          </h4>
-                          <p className="text-cyan-700 text-sm font-medium">
-                            Escribe el modelo de tu caucho drive y agrégalo para que otros también puedan seleccionarlo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_drive_rubber_model')}
-                          type="text"
-                          placeholder="Escribe el modelo de tu caucho drive"
-                          className="w-full px-4 py-3 border-2 border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="drive_rubber_model"
-                          value={watch('custom_drive_rubber_model') || ''}
-                          onValidationResult={(result) => handleValidationResult('driveRubberModel', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_model', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomDriveRubberModel}
-                          currentOptions={rubberDriveModelOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Campo personalizado para hardness del drive */}
-                  {showCustomDriveHardness && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-purple-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-purple-800">
-                            💎 Agregar Hardness Drive
-                          </h4>
-                          <p className="text-purple-700 text-sm font-medium">
-                            Escribe el hardness de tu caucho drive y agrégalo para que otros también puedan seleccionarlo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_drive_rubber_hardness')}
-                          type="text"
-                          placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                          className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="drive_rubber_hardness"
-                          value={watch('custom_drive_rubber_hardness') || ''}
-                          onValidationResult={(result) => handleValidationResult('driveRubberHardness', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_drive_rubber_hardness', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomDriveHardness}
-                          currentOptions={driveHardnessOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
                 </motion.div>
 
                 {/* Caucho del Back - ACTUALIZADO: Opciones independientes para marca y modelo */}
@@ -2117,136 +2012,136 @@ const RegistroRapidoClient: React.FC = () => {
                         Incluye N/A si no conoces la dureza
                       </p>
                     </div>
+
+                    {/* Campo personalizado para marca */}
+                    {showCustomBackhandRubberBrand && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-amber-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-amber-800">
+                              🏷️ Agregar Marca de Caucho Back
+                            </h4>
+                            <p className="text-amber-700 text-sm font-medium">
+                              Escribe la marca de tu caucho back y agrégala para que otros también puedan seleccionarla
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_backhand_rubber_brand')}
+                            type="text"
+                            placeholder="Escribe la marca de tu caucho back"
+                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="brand"
+                            value={watch('custom_backhand_rubber_brand') || ''}
+                            onValidationResult={(result) => handleValidationResult('brand', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_brand', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomBackhandRubberBrand}
+                            currentOptions={rubberBackBrandOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para modelo */}
+                    {showCustomBackhandRubberModel && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-cyan-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-cyan-800">
+                              🎯 Agregar Modelo de Caucho Back
+                            </h4>
+                            <p className="text-cyan-700 text-sm font-medium">
+                              Escribe el modelo de tu caucho back y agrégalo para que otros también puedan seleccionarlo
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_backhand_rubber_model')}
+                            type="text"
+                            placeholder="Escribe el modelo de tu caucho back"
+                            className="w-full px-4 py-3 border-2 border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 font-bold placeholder-cyan-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="backhand_rubber_model"
+                            value={watch('custom_backhand_rubber_model') || ''}
+                            onValidationResult={(result) => handleValidationResult('backhandRubberModel', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_model', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomBackhandRubberModel}
+                            currentOptions={rubberBackModelOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Campo personalizado para hardness del back */}
+                    {showCustomBackhandHardness && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-sm col-span-full"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="bg-purple-100 rounded-full p-2">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-purple-800">
+                              💎 Agregar Hardness Back
+                            </h4>
+                            <p className="text-purple-700 text-sm font-medium">
+                              Escribe el hardness de tu caucho back y agrégalo para que otros también puedan seleccionarlo
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <input
+                            {...register('custom_backhand_rubber_hardness')}
+                            type="text"
+                            placeholder="Ej: h41, Medium-Soft, 38°, etc."
+                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600 bg-white"
+                          />
+                          <CustomFieldValidator
+                            fieldType="backhand_rubber_hardness"
+                            value={watch('custom_backhand_rubber_hardness') || ''}
+                            onValidationResult={(result) => handleValidationResult('backhandRubberHardness', result)}
+                            onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_hardness', value)}
+                            onFieldAdded={handleFieldAdded}
+                            isVisible={showCustomBackhandHardness}
+                            currentOptions={backhandHardnessOptions.options}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
-
-                  {/* Campo personalizado para marca */}
-                  {showCustomBackhandRubberBrand && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-amber-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-amber-800">
-                            🏷️ Agregar Marca de Caucho Back
-                          </h4>
-                          <p className="text-amber-700 text-sm font-medium">
-                            Escribe la marca de tu caucho back y agrégala para que otros también puedan seleccionarla
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_backhand_rubber_brand')}
-                          type="text"
-                          placeholder="Escribe la marca de tu caucho back"
-                          className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 font-bold placeholder-amber-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="brand"
-                          value={watch('custom_backhand_rubber_brand') || ''}
-                          onValidationResult={(result) => handleValidationResult('brand', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_brand', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomBackhandRubberBrand}
-                          currentOptions={rubberBackBrandOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Campo personalizado para modelo */}
-                  {showCustomBackhandRubberModel && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-green-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-green-800">
-                            🎯 Agregar Modelo de Caucho Back
-                          </h4>
-                          <p className="text-green-700 text-sm font-medium">
-                            Escribe el modelo de tu caucho back y agrégalo para que otros también puedan seleccionarlo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_backhand_rubber_model')}
-                          type="text"
-                          placeholder="Escribe el modelo de tu caucho back"
-                          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 font-bold placeholder-green-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="backhand_rubber_model"
-                          value={watch('custom_backhand_rubber_model') || ''}
-                          onValidationResult={(result) => handleValidationResult('backhandRubberModel', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_model', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomBackhandRubberModel}
-                          currentOptions={rubberBackModelOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Campo personalizado para hardness del back */}
-                  {showCustomBackhandHardness && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="bg-purple-100 rounded-full p-2">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-purple-800">
-                            💎 Agregar Hardness Back
-                          </h4>
-                          <p className="text-purple-700 text-sm font-medium">
-                            Escribe el hardness de tu caucho back y agrégalo para que otros también puedan seleccionarlo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          {...register('custom_backhand_rubber_hardness')}
-                          type="text"
-                          placeholder="Ej: h41, Medium-Soft, 38°, etc."
-                          className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-bold placeholder-purple-600 bg-white"
-                        />
-                        <CustomFieldValidator
-                          fieldType="backhand_rubber_hardness"
-                          value={watch('custom_backhand_rubber_hardness') || ''}
-                          onValidationResult={(result) => handleValidationResult('backhandRubberHardness', result)}
-                          onSuggestionAccepted={(value) => handleSuggestionAccepted('custom_backhand_rubber_hardness', value)}
-                          onFieldAdded={handleFieldAdded}
-                          isVisible={showCustomBackhandHardness}
-                          currentOptions={backhandHardnessOptions.options}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
                 </motion.div>
 
                 {/* Información adicional */}
@@ -2256,24 +2151,40 @@ const RegistroRapidoClient: React.FC = () => {
                   </h3>
                   
                   <div className="space-y-2">
-                    <label htmlFor="notes" className={labelStyles}>Notas adicionales</label>
+                    <label htmlFor="notes" className={labelStyles}>Notas</label>
                     <textarea
                       {...register('notes')}
                       id="notes"
                       rows={4}
-                      className={`${inputStyles} ${inputNormalStyles}`}
-                      placeholder="Escribe cualquier nota sobre tu juego, experiencia o preferencias"
+                      placeholder="Información adicional que consideres relevante..."
+                      className={`${inputStyles} ${inputNormalStyles} resize-none`}
                     />
+                    <p className="text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Espacio opcional para cualquier información adicional</span>
+                    </p>
                   </div>
+                </div>
+
+                {/* Botón de envío */}
+                <div className="pt-6 border-t border-gray-200">
+                  <motion.button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold text-lg shadow-lg hover:shadow-xl"
+                  >
+                    Registrar
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
           </motion.div>
-        </AuthLayout>
+        </div>
       </SnackbarProvider>
     </ThemeProvider>
   );
 };
 
 export default RegistroRapidoClient;
-
