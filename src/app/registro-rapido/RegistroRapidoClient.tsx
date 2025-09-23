@@ -16,14 +16,7 @@ import AuthHeader from '@/components/auth/AuthHeader';
 import { useExistingClubs, useExistingLeagues } from '@/hooks/useExistingClubs';
 import { useDynamicOptions } from '@/hooks/useDynamicOptions';
 import CustomFieldValidator from '@/components/ui/CustomFieldValidator';
-import { FieldType } from '@/utils/customFieldValidation';
-
-// Define ValidationResult interface for validation states
-interface ValidationResult {
-  isValid: boolean;
-  message?: string;
-  suggestions?: string[];
-}
+import { FieldType, ValidationResult } from '@/utils/customFieldValidation';
 
 const registroRapidoSchema = z.object({
   // Información personal básica - ACTUALIZADO: nombres y apellidos separados
@@ -2276,4 +2269,3 @@ const RegistroRapidoClient: React.FC = () => {
 };
 
 export default RegistroRapidoClient;
-
