@@ -13,9 +13,11 @@ export type FieldType =
   | 'league';
 
 export interface ValidationResult {
+  isValid: boolean;
+  message?: string;
+  suggestions?: string[];
   is_duplicate: boolean;
   suggested_value: string;
-  message: string;
   match_type: 'exact' | 'partial' | null;
   source: 'custom_fields' | 'registrations' | null;
   all_suggestions?: string[];
@@ -62,15 +64,29 @@ export const validateCustomField = async (
     });
     
     console.log('Respuesta de validación:', response.data);
-    return response.data;
+    
+    // Transform the API response to match our ValidationResult interface
+    const apiResult = response.data;
+    return {
+      isValid: !apiResult.is_duplicate,
+      message: apiResult.message,
+      suggestions: apiResult.all_suggestions,
+      is_duplicate: apiResult.is_duplicate,
+      suggested_value: apiResult.suggested_value,
+      match_type: apiResult.match_type,
+      source: apiResult.source,
+      all_suggestions: apiResult.all_suggestions
+    };
   } catch (error) {
     console.error('Error validating custom field:', error);
     
     // Si hay un error de red o del servidor, devolver un resultado que permita agregar el campo
     return {
+      isValid: true,
+      message: 'Error al validar, pero puedes agregar el campo',
+      suggestions: [],
       is_duplicate: false,
       suggested_value: value,
-      message: 'Error al validar, pero puedes agregar el campo',
       match_type: null,
       source: null
     };
