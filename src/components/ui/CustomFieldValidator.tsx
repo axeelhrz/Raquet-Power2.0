@@ -42,9 +42,11 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     
     if (exactMatch) {
       return {
+        isValid: false,
+        message: `"${exactMatch}" ya está disponible en la lista`,
+        suggestions: [exactMatch],
         is_duplicate: true,
         suggested_value: exactMatch,
-        message: `"${exactMatch}" ya está disponible en la lista`,
         match_type: 'exact',
         source: 'custom_fields',
         all_suggestions: [exactMatch]
@@ -59,9 +61,11 @@ const CustomFieldValidator: React.FC<CustomFieldValidatorProps> = ({
     
     if (partialMatches.length > 0) {
       return {
+        isValid: false,
+        message: `¿Quisiste decir "${partialMatches[0]}"?`,
+        suggestions: partialMatches.slice(0, 5),
         is_duplicate: false,
         suggested_value: partialMatches[0],
-        message: `¿Quisiste decir "${partialMatches[0]}"?`,
         match_type: 'partial',
         source: 'custom_fields',
         all_suggestions: partialMatches.slice(0, 5)
