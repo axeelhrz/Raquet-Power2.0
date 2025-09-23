@@ -338,14 +338,29 @@ const SignUpForm: React.FC = () => {
       setLoadingClubs(true);
       const url = leagueId ? `/api/auth/clubs?league_id=${leagueId}` : '/api/auth/clubs';
       const response = await api.get(url);
-      setClubs(response.data.data || []);
+      
+      // Verificar si la respuesta tiene datos
+      const clubsData = response.data.data || response.data || [];
+      setClubs(clubsData);
+      
+      // Si no hay clubes, mostrar un mensaje de debug
+      if (clubsData.length === 0) {
+        console.warn('No clubs found. Response:', response.data);
+      }
     } catch (error) {
       console.error('Error fetching clubs:', error);
-      setClubs([
+      
+      // Fallback mejorado con más clubes de ejemplo
+      const fallbackClubs = [
         { id: '1', name: 'Club Deportivo Los Campeones', city: 'Quito', league: { id: '1', name: 'Liga Nacional' } },
         { id: '2', name: 'Club Raqueta de Oro', city: 'Guayaquil', league: { id: '2', name: 'Liga Provincial' } },
         { id: '3', name: 'Club Tenis de Mesa Quito', city: 'Quito', league: { id: '1', name: 'Liga Nacional' } },
-      ]);
+        { id: '4', name: 'Admin', city: 'Nacional', league: { id: '1', name: 'Liga Nacional' } },
+        { id: '5', name: 'Club Deportivo Ambato', city: 'Ambato', league: { id: '3', name: 'Liga Regional' } },
+        { id: '6', name: 'Club Manta TM', city: 'Manta', league: { id: '4', name: 'Liga Manabí' } },
+      ];
+      
+      setClubs(fallbackClubs);
     } finally {
       setLoadingClubs(false);
     }

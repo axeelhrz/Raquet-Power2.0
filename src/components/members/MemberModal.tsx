@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Member, Club } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/lib/axios';
 
 const memberSchema = z.object({
   // Basic information
@@ -109,13 +110,15 @@ const MemberModal: React.FC<MemberModalProps> = ({
   onClose,
   onSubmit,
   member,
-  clubs,
+  clubs: initialClubs,
   isSubmitting = false
 }) => {
   const { user } = useAuth();
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [availableClubs, setAvailableClubs] = useState<Club[]>(initialClubs);
+  const [loadingClubs, setLoadingClubs] = useState(false);
   const totalSteps = 5;
 
   const {
@@ -134,11 +137,30 @@ const MemberModal: React.FC<MemberModalProps> = ({
   });
 
   const watchedProvince = watch('province');
+  const watchedClubId = watch('club_id');
   const selectedProvince = ECUADOR_PROVINCES.find(p => p.name === watchedProvince);
+  const selectedClub = availableClubs.find(club => club.id === watchedClubId);
 
-  // Check if current user can create members (only super_admin can)
-  const canCreateMembers = user?.role === 'super_admin';
-  const isEditMode = !!member;
+  // Fetch all available clubs when modal opens
+  useEffect(() => {
+    const fetchAvailableClubs = async () => {
+      if (!isOpen) return;
+      
+      try {
+        setLoadingClubs(true);
+        const response = await api.get('/api/members/available-clubs');
+        setAvailableClubs(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching available clubs:', error);
+        // Fallback to initial clubs if API fails
+        setAvailableClubs(initialClubs);
+      } finally {
+        setLoadingClubs(false);
+      }
+    };
+
+    fetchAvailableClubs();
+  }, [isOpen, initialClubs]);
 
   useEffect(() => {
     if (member) {
@@ -230,8 +252,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
   const labelStyles = "block text-sm font-bold text-gray-800 mb-2";
   const sectionTitleStyles = "text-xl font-bold text-gray-900 border-b-2 border-blue-300 pb-3 mb-6";
 
-  // Don't show modal if user doesn't have permission to create and it's not edit mode
-  if (!isOpen || (!canCreateMembers && !isEditMode)) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -251,11 +272,6 @@ const MemberModal: React.FC<MemberModalProps> = ({
               <p className="text-blue-100 mt-1">
                 Paso {currentStep} de {totalSteps}
               </p>
-              {!canCreateMembers && !isEditMode && (
-                <p className="text-yellow-200 text-sm mt-2">
-                  ⚠️ Solo puedes editar miembros existentes
-                </p>
-              )}
             </div>
             <button
               onClick={onClose}
@@ -427,21 +443,49 @@ const MemberModal: React.FC<MemberModalProps> = ({
                     <label htmlFor="club_id" className={labelStyles}>
                       Club <span className="text-red-600">*</span>
                     </label>
-                    <select
-                      {...register('club_id', { valueAsNumber: true })}
-                      id="club_id"
-                      disabled={user?.role === 'club' && clubs.length === 1}
-                      className={`${inputStyles} ${errors.club_id ? inputErrorStyles : inputNormalStyles} ${user?.role === 'club' && clubs.length === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="">Seleccionar club</option>
-                      {clubs.map((club) => (
-                        <option key={club.id} value={club.id}>
-                          {club.name}
-                        </option>
-                      ))}
-                    </select>
+                    {loadingClubs ? (
+                      <div className="flex items-center justify-center py-3 px-4 rounded-xl border border-gray-200 bg-gray-50">
+                        <svg className="animate-spin h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-gray-500">Cargando clubes...</span>
+                      </div>
+                    ) : (
+                      <select
+                        {...register('club_id', { valueAsNumber: true })}
+                        id="club_id"
+                        className={`${inputStyles} ${errors.club_id ? inputErrorStyles : inputNormalStyles}`}
+                      >
+                        <option value="">Seleccionar club</option>
+                        {availableClubs.map((club) => (
+                          <option key={club.id} value={club.id}>
+                            {club.name} {club.league?.name ? `- ${club.league.name}` : ''} {club.city ? `(${club.city})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {errors.club_id && (
                       <p className="text-sm text-red-700 font-medium">{errors.club_id.message}</p>
+                    )}
+                    {selectedClub && (
+                      <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 text-sm text-blue-800">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                          </svg>
+                          <span className="font-medium">Club seleccionado:</span>
+                        </div>
+                        <div className="mt-1 text-sm text-blue-700">
+                          <p className="font-semibold">{selectedClub.name}</p>
+                          {selectedClub.league && (
+                            <p>Liga: {selectedClub.league.name}</p>
+                          )}
+                          {selectedClub.city && selectedClub.province && (
+                            <p>Ubicación: {selectedClub.city}, {selectedClub.province}</p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
 

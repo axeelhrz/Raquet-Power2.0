@@ -1,6 +1,7 @@
 'use client';
 
-import { 
+import { useState, useEffect } from 'react';
+import {
   Dialog,
   DialogTitle,
   DialogContent,
@@ -9,69 +10,107 @@ import {
   Typography,
   Box,
   Stack,
-  Avatar,
-  Chip,
-  Divider,
   Card,
   CardContent,
-  IconButton,
+  Chip,
+  Avatar,
+  Divider,
+  Tab,
   Tabs,
-  Tab
+  Alert,
+  LinearProgress,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
 import {
   TrophyIcon,
   CalendarIcon,
-  ClockIcon,
   MapPinIcon,
-  UserGroupIcon,
   CurrencyDollarIcon,
-  BuildingOfficeIcon,
-  InformationCircleIcon,
-  XMarkIcon,
+  UsersIcon,
+  ClockIcon,
   CheckCircleIcon,
   PlayIcon,
-  StopIcon,
-  DocumentTextIcon,
-  StarIcon,
-  RectangleGroupIcon
+  XMarkIcon,
+  UserGroupIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Tournament } from '@/types';
 import TournamentBracket from './TournamentBracket';
 import TournamentParticipants from './TournamentParticipants';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TournamentDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   tournament: Tournament | null;
+  onRefresh?: () => void;
 }
 
-export default function TournamentDetailsModal({
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tournament-tabpanel-${index}`}
+      aria-labelledby={`tournament-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ py: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
   isOpen,
   onClose,
   tournament,
-}: TournamentDetailsModalProps) {
+  onRefresh
+}) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  if (!tournament) return null;
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'draft': return DocumentTextIcon;
-      case 'open': case 'upcoming': return ClockIcon;
-      case 'active': case 'in_progress': return PlayIcon;
-      case 'completed': return CheckCircleIcon;
-      case 'cancelled': return StopIcon;
-      default: return ClockIcon;
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(0);
     }
+  }, [isOpen]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
   };
 
-  const getStatusColor = (status: string) => {
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+    onRefresh?.();
+  };
+
+  const canManage = Boolean(user && tournament && (
+    user.role === 'super_admin' ||
+    (user.role === 'club' && tournament.club_id) ||
+    (user.role === 'liga' && tournament.league_id)
+  ));
+
+  const getStatusColor = (status: string): ChipColor => {
     switch (status) {
-      case 'draft': return 'default';
-      case 'open': case 'upcoming': return 'info';
-      case 'active': case 'in_progress': return 'success';
+      case 'upcoming': return 'info';
+      case 'active': return 'success';
       case 'completed': return 'primary';
       case 'cancelled': return 'error';
       default: return 'default';
@@ -80,145 +119,204 @@ export default function TournamentDetailsModal({
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'draft': return 'Borrador';
-      case 'open': return 'Abierto';
       case 'upcoming': return 'Próximo';
-      case 'active': case 'in_progress': return 'En Progreso';
+      case 'active': return 'Activo';
       case 'completed': return 'Completado';
       case 'cancelled': return 'Cancelado';
       default: return status;
     }
   };
 
-  const getTypeLabel = (type: string, format?: string) => {
-    // First show if it's individual or team
-    const typeLabel = type === 'individual' ? 'Individual' : type === 'team' ? 'Por Equipos' : type;
-    
-    // Then show the format if available
-    if (format) {
-      const formatLabel = format === 'single_elimination' ? 'Eliminación Simple' :
-                         format === 'double_elimination' ? 'Eliminación Doble' :
-                         format === 'round_robin' ? 'Todos contra Todos' :
-                         format === 'swiss_system' ? 'Sistema Suizo' : format;
-      return `${typeLabel} - ${formatLabel}`;
+  const getStatusIcon = (status: string) => {
+    const iconStyle = { width: 16, height: 16 };
+    switch (status) {
+      case 'upcoming': return <ClockIcon style={iconStyle} />;
+      case 'active': return <PlayIcon style={iconStyle} />;
+      case 'completed': return <CheckCircleIcon style={iconStyle} />;
+      case 'cancelled': return <XMarkIcon style={iconStyle} />;
+      default: return <ClockIcon style={iconStyle} />;
     }
-    
-    return typeLabel;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const StatusIcon = getStatusIcon(tournament.status);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
+  if (!tournament) return null;
 
   return (
     <Dialog
       open={isOpen}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="xl"
       fullWidth
       PaperProps={{
-        sx: {
-          borderRadius: 3,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          maxHeight: '90vh',
-        }
-      }}
-      BackdropProps={{
-        sx: {
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(8px)',
-        }
-      }}
-      sx={{
-        '& .MuiDialog-container': {
-          alignItems: 'flex-start',
-          paddingTop: '5vh',
+        sx: { 
+          borderRadius: 3, 
+          minHeight: '80vh',
+          maxHeight: '90vh'
         }
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: -20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: -20 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-      >
-        {/* Header */}
-        <DialogTitle sx={{ pb: 2, pr: 1 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  backgroundColor: 'primary.50',
-                  border: '2px solid',
-                  borderColor: 'primary.100',
-                }}
-              >
-                <TrophyIcon style={{ width: 28, height: 28, color: 'var(--mui-palette-primary-main)' }} />
-              </Avatar>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
-                  {tournament.name}
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Chip
-                    label={getStatusLabel(tournament.status)}
-                    size="small"
-                    color={getStatusColor(tournament.status) as import('@mui/material').ChipProps['color']}
-                    variant="outlined"
-                    icon={<StatusIcon style={{ width: 14, height: 14 }} />}
-                  />
-                  <Chip
-                    label={getTypeLabel(tournament.tournament_type)}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontSize: '0.75rem' }}
-                  />
-                </Stack>
-              </Box>
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="h5" component="div" fontWeight="bold">
+              {tournament.name}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+              <Chip
+                label={getStatusLabel(tournament.status)}
+                color={getStatusColor(tournament.status)}
+                variant="outlined"
+                size="small"
+                icon={getStatusIcon(tournament.status)}
+              />
+              <Chip
+                label={tournament.tournament_type === 'individual' ? 'Individual' : 'Por Equipos'}
+                variant="outlined"
+                size="small"
+              />
+              <Chip
+                label={tournament.tournament_format || 'Eliminación Simple'}
+                variant="outlined"
+                size="small"
+              />
             </Stack>
-            <IconButton
-              onClick={onClose}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': {
-                  backgroundColor: 'grey.100',
-                },
-              }}
-            >
-              <XMarkIcon style={{ width: 24, height: 24 }} />
-            </IconButton>
-          </Stack>
-        </DialogTitle>
+          </Box>
+          <IconButton onClick={onClose}>
+            <XMarkIcon style={{ width: 24, height: 24 }} />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
 
-        {/* Tabs */}
+      <DialogContent sx={{ px: 0, py: 0 }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+            <Card sx={{ flex: 1, border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom fontWeight={600}>
+                  Información General
+                </Typography>
+                <Stack spacing={2}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <CalendarIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
+                    <Typography variant="body2">
+                      {new Date(tournament.start_date).toLocaleDateString()} - {new Date(tournament.end_date).toLocaleDateString()}
+                    </Typography>
+                  </Stack>
+                  
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <ClockIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
+                    <Typography variant="body2">
+                      Registro hasta: {new Date(tournament.registration_deadline).toLocaleDateString()}
+                    </Typography>
+                  </Stack>
+
+                  {tournament.location && (
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <MapPinIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
+                      <Typography variant="body2">{tournament.location}</Typography>
+                    </Stack>
+                  )}
+
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <UsersIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
+                    <Typography variant="body2">
+                      {tournament.current_participants || 0} / {tournament.max_participants} participantes
+                    </Typography>
+                  </Stack>
+
+                  {tournament.entry_fee && tournament.entry_fee > 0 && (
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <CurrencyDollarIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
+                      <Typography variant="body2">
+                        Inscripción: ${tournament.entry_fee}
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ flex: 1, border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom fontWeight={600}>
+                  Progreso del Torneo
+                </Typography>
+                <Stack spacing={2}>
+                  <Box>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Partidos completados
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {tournament.matches_played || 0} / {tournament.matches_total || 0}
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={tournament.matches_total ? ((tournament.matches_played || 0) / tournament.matches_total) * 100 : 0}
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
+                  </Box>
+
+                  <Stack direction="row" spacing={2}>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h6" color="primary.main">
+                        {tournament.current_participants || 0}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Participantes
+                      </Typography>
+                    </Box>
+                    <Divider orientation="vertical" flexItem />
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h6" color="success.main">
+                        {tournament.matches_played || 0}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Partidos
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {(tournament.first_prize || tournament.second_prize || tournament.third_prize) && (
+              <Card sx={{ flex: 1, border: '1px solid', borderColor: 'divider' }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom fontWeight={600}>
+                    Premios
+                  </Typography>
+                  <Stack spacing={1}>
+                    {tournament.first_prize && (
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <TrophyIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-warning-main)' }} />
+                        <Typography variant="body2">1°: {tournament.first_prize}</Typography>
+                      </Stack>
+                    )}
+                    {tournament.second_prize && (
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <TrophyIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-grey-500)' }} />
+                        <Typography variant="body2">2°: {tournament.second_prize}</Typography>
+                      </Stack>
+                    )}
+                    {tournament.third_prize && (
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <TrophyIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-orange-600)' }} />
+                        <Typography variant="body2">3°: {tournament.third_prize}</Typography>
+                      </Stack>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+          </Stack>
+        </Box>
+
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
           <Tabs value={activeTab} onChange={handleTabChange} aria-label="tournament details tabs">
             <Tab 
-              label="Información General" 
-              icon={<InformationCircleIcon style={{ width: 20, height: 20 }} />}
+              label="Bracket" 
+              icon={<ChartBarIcon style={{ width: 20, height: 20 }} />}
               iconPosition="start"
             />
             <Tab 
@@ -227,318 +325,193 @@ export default function TournamentDetailsModal({
               iconPosition="start"
             />
             <Tab 
-              label="Bracket del Torneo" 
-              icon={<RectangleGroupIcon style={{ width: 20, height: 20 }} />}
+              label="Detalles" 
+              icon={<TrophyIcon style={{ width: 20, height: 20 }} />}
               iconPosition="start"
             />
           </Tabs>
         </Box>
 
-        <DialogContent sx={{ px: 3, pb: 2 }}>
-          {/* Tab Content */}
-          {activeTab === 0 && (
-            <Stack spacing={3} sx={{ mt: 2 }}>
-              {/* Tournament Description */}
+        <Box sx={{ px: 3, minHeight: 400 }}>
+          <TabPanel value={activeTab} index={0}>
+            <TournamentBracket
+              key={`bracket-${refreshKey}`}
+              tournament={tournament}
+              canManage={canManage}
+              onRefresh={handleRefresh}
+            />
+          </TabPanel>
+
+          <TabPanel value={activeTab} index={1}>
+            <TournamentParticipants
+              key={`participants-${refreshKey}`}
+              isOpen={activeTab === 1}
+              onClose={() => {}}
+              tournament={tournament}
+            />
+          </TabPanel>
+
+          <TabPanel value={activeTab} index={2}>
+            <Stack spacing={3}>
               {tournament.description && (
-                <Card sx={{ backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
-                  <CardContent sx={{ p: 2 }}>
-                    <Stack direction="row" alignItems="flex-start" spacing={2}>
-                      <InformationCircleIcon style={{ width: 20, height: 20, color: 'var(--mui-palette-text-secondary)', marginTop: 2 }} />
-                      <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-                        {tournament.description}
-                      </Typography>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                      Descripción
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {tournament.description}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
+
+              {tournament.rules && (
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                      Reglas
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {tournament.rules}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom fontWeight={600}>
+                    Configuración del Torneo
+                  </Typography>
+                  <Stack spacing={2}>
+                    <Stack direction="row" spacing={4}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Tipo</Typography>
+                        <Typography variant="body1" fontWeight={500}>
+                          {tournament.tournament_type === 'individual' ? 'Individual' : 'Por Equipos'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Formato</Typography>
+                        <Typography variant="body1" fontWeight={500}>
+                          {tournament.tournament_format === 'single_elimination' ? 'Eliminación Simple' :
+                           tournament.tournament_format === 'double_elimination' ? 'Doble Eliminación' :
+                           tournament.tournament_format === 'round_robin' ? 'Todos contra Todos' :
+                           tournament.tournament_format || 'Eliminación Simple'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Modalidad</Typography>
+                        <Typography variant="body1" fontWeight={500}>
+                          {tournament.modality === 'singles' ? 'Singles' : 
+                           tournament.modality === 'doubles' ? 'Dobles' : 'Singles'}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    {(tournament.age_filter || tournament.ranking_filter || tournament.gender) && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>Filtros</Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          {tournament.age_filter && tournament.min_age && tournament.max_age && (
+                            <Chip
+                              label={`Edad: ${tournament.min_age}-${tournament.max_age} años`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                          {tournament.ranking_filter && tournament.min_ranking && tournament.max_ranking && (
+                            <Chip
+                              label={`Ranking: ${tournament.min_ranking}-${tournament.max_ranking}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                          {tournament.gender && tournament.gender !== 'mixed' && (
+                            <Chip
+                              label={tournament.gender === 'male' ? 'Masculino' : 'Femenino'}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                        </Stack>
+                      </Box>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {(tournament.contact_name || tournament.contact_phone || tournament.ball_info) && (
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                      Información de Contacto
+                    </Typography>
+                    <Stack spacing={1}>
+                      {tournament.contact_name && (
+                        <Typography variant="body2">
+                          <strong>Contacto:</strong> {tournament.contact_name}
+                        </Typography>
+                      )}
+                      {tournament.contact_phone && (
+                        <Typography variant="body2">
+                          <strong>Teléfono:</strong> {tournament.contact_phone}
+                        </Typography>
+                      )}
+                      {tournament.ball_info && (
+                        <Typography variant="body2">
+                          <strong>Información de Pelotas:</strong> {tournament.ball_info}
+                        </Typography>
+                      )}
                     </Stack>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Main Information Cards */}
-              <Stack spacing={3}>
-                {/* Dates and Times Card */}
-                <Card sx={{ border: '1px solid', borderColor: 'grey.200' }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CalendarIcon style={{ width: 20, height: 20, color: 'var(--mui-palette-primary-main)' }} />
-                      Fechas y Horarios
+              {tournament.club && (
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                      Club Organizador
                     </Typography>
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                          Fecha de Inicio
+                    <Stack spacing={1}>
+                      <Typography variant="body1" fontWeight={500}>
+                        {tournament.club.name}
+                      </Typography>
+                      {tournament.club.city && (
+                        <Typography variant="body2" color="text.secondary">
+                          {tournament.club.city}, {tournament.club.province}
                         </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {formatDate(tournament.start_date)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {formatTime(tournament.start_date)}
-                        </Typography>
-                      </Box>
-                      
-                      <Divider />
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                          Fecha de Finalización
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {formatDate(tournament.end_date)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {formatTime(tournament.end_date)}
-                        </Typography>
-                      </Box>
-                      
-                      <Divider />
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                          Cierre de Inscripciones
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {formatDate(tournament.registration_deadline)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {formatTime(tournament.registration_deadline)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                {/* Tournament Details Card */}
-                <Card sx={{ border: '1px solid', borderColor: 'grey.200' }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <InformationCircleIcon style={{ width: 20, height: 20, color: 'var(--mui-palette-primary-main)' }} />
-                      Detalles del Torneo
-                    </Typography>
-                    <Stack spacing={2}>
-                      {tournament.code && (
-                        <Box>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                            Código del Torneo
-                          </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            #{tournament.code}
-                          </Typography>
-                        </Box>
                       )}
-                      
-                      {tournament.code && <Divider />}
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                          Participantes
+                      {tournament.club.address && (
+                        <Typography variant="body2" color="text.secondary">
+                          {tournament.club.address}
                         </Typography>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <UserGroupIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {tournament.current_participants || 0} / {tournament.max_participants || '∞'}
-                          </Typography>
-                        </Stack>
-                      </Box>
-                      
-                      {tournament.entry_fee && (
-                        <>
-                          <Divider />
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                              Costo de Inscripción
-                            </Typography>
-                            <Stack direction="row" alignItems="center" spacing={1}>
-                              <CurrencyDollarIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-success-main)' }} />
-                              <Typography variant="body1" sx={{ fontWeight: 500, color: 'success.main' }}>
-                                ${tournament.entry_fee}
-                              </Typography>
-                            </Stack>
-                          </Box>
-                        </>
-                      )}
-                      
-                      {tournament.prize_pool && (
-                        <>
-                          <Divider />
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                              Premio Total
-                            </Typography>
-                            <Stack direction="row" alignItems="center" spacing={1}>
-                              <StarIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-warning-main)' }} />
-                              <Typography variant="body1" sx={{ fontWeight: 500, color: 'warning.main' }}>
-                                ${tournament.prize_pool}
-                              </Typography>
-                            </Stack>
-                          </Box>
-                        </>
                       )}
                     </Stack>
                   </CardContent>
                 </Card>
-
-                {/* Club Information Card */}
-                {tournament.club && (
-                  <Card sx={{ border: '1px solid', borderColor: 'grey.200' }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <BuildingOfficeIcon style={{ width: 20, height: 20, color: 'var(--mui-palette-primary-main)' }} />
-                        Información del Club
-                      </Typography>
-                      <Stack spacing={2}>
-                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                              Nombre del Club
-                            </Typography>
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                              {tournament.club.name}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                              Ubicación
-                            </Typography>
-                            <Stack direction="row" alignItems="center" spacing={1}>
-                              <MapPinIcon style={{ width: 16, height: 16, color: 'var(--mui-palette-text-secondary)' }} />
-                              <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                {tournament.club.city}
-                                {tournament.club.province && `, ${tournament.club.province}`}
-                              </Typography>
-                            </Stack>
-                          </Box>
-                        </Stack>
-                        
-                        {tournament.club.address && (
-                          <>
-                            <Divider />
-                            <Box>
-                              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                                Dirección
-                              </Typography>
-                              <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                {tournament.club.address}
-                              </Typography>
-                            </Box>
-                          </>
-                        )}
-                        
-                        {(tournament.club.phone || tournament.club.email) && (
-                          <>
-                            <Divider />
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-                              {tournament.club.phone && (
-                                <Box sx={{ flex: 1 }}>
-                                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                                    Teléfono
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                    {tournament.club.phone}
-                                  </Typography>
-                                </Box>
-                              )}
-                              {tournament.club.email && (
-                                <Box sx={{ flex: 1 }}>
-                                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                                    Email
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                    {tournament.club.email}
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Stack>
-                          </>
-                        )}
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Tournament Progress Card */}
-                {(tournament.status === 'active' || tournament.status === 'in_progress' || tournament.status === 'completed') && (
-                  <Card sx={{ border: '1px solid', borderColor: 'grey.200' }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <PlayIcon style={{ width: 20, height: 20, color: 'var(--mui-palette-success-main)' }} />
-                        Progreso del Torneo
-                      </Typography>
-                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-                        <Box sx={{ flex: 1, textAlign: 'center' }}>
-                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
-                            {tournament.current_participants || 0}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                            Participantes Registrados
-                          </Typography>
-                        </Box>
-                        <Box sx={{ flex: 1, textAlign: 'center' }}>
-                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main', mb: 1 }}>
-                            {tournament.matches_played || 0}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                            Partidos Jugados
-                          </Typography>
-                        </Box>
-                        <Box sx={{ flex: 1, textAlign: 'center' }}>
-                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'warning.main', mb: 1 }}>
-                            {tournament.matches_total || 0}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                            Total de Partidos
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                )}
-              </Stack>
+              )}
             </Stack>
-          )}
+          </TabPanel>
+        </Box>
+      </DialogContent>
 
-          {/* Participants Tab */}
-          {activeTab === 1 && (
-            <Box sx={{ mt: 2 }}>
-              <TournamentParticipants tournament={tournament} isOpen={isOpen} onClose={onClose} />
-            </Box>
-          )}
-
-          {/* Bracket Tab */}
-          {activeTab === 2 && (
-            <Box sx={{ mt: 2 }}>
-              <TournamentBracket
-                tournamentType={tournament.tournament_type}
-                tournamentFormat={tournament.tournament_format}
-                maxParticipants={tournament.max_participants || 8}
-                currentParticipants={tournament.current_participants || 0}
-              />
-            </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
-          <Button
-            onClick={onClose}
-            variant="contained"
-            size="large"
-            sx={{
-              px: 4,
-              py: 1.5,
-              fontSize: '1rem',
-              fontWeight: 600,
-              borderRadius: 2,
-              textTransform: 'none',
-              backgroundColor: 'primary.main',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-                transform: 'translateY(-1px)',
-                boxShadow: '0 6px 16px rgba(47, 109, 251, 0.4)',
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            Cerrar
-          </Button>
-        </DialogActions>
-      </motion.div>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onClose} variant="outlined">
+          Cerrar
+        </Button>
+        {canManage && (
+          <Tooltip title="Actualizar información del torneo">
+            <Button onClick={handleRefresh} variant="contained">
+              Actualizar
+            </Button>
+          </Tooltip>
+        )}
+      </DialogActions>
     </Dialog>
   );
-}
+};
+
+export default TournamentDetailsModal;

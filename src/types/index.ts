@@ -1,4 +1,3 @@
-// User types with role-specific information
 export interface User {
   id: number;
   name: string;
@@ -13,7 +12,6 @@ export interface User {
   parent_club_id?: number;
 }
 
-// League types
 export interface League {
   id: number;
   name: string;
@@ -32,7 +30,6 @@ export interface League {
   members_count?: number;
 }
 
-// Club types - Updated with comprehensive fields
 export interface Club {
   id: number;
   name: string;
@@ -50,7 +47,6 @@ export interface Club {
   members?: Member[];
   members_count?: number;
   
-  // Additional comprehensive club fields
   ruc?: string;
   country?: string;
   province?: string;
@@ -60,31 +56,25 @@ export interface Club {
   description?: string;
   founded_date?: string;
   
-  // Representative information
   representative_name?: string;
   representative_phone?: string;
   representative_email?: string;
   
-  // Administrator 1
   admin1_name?: string;
   admin1_phone?: string;
   admin1_email?: string;
   
-  // Administrator 2
   admin2_name?: string;
   admin2_phone?: string;
   admin2_email?: string;
   
-  // Administrator 3
   admin3_name?: string;
   admin3_phone?: string;
   admin3_email?: string;
   
-  // Logo
   logo_path?: string;
 }
 
-// Member types - Updated with comprehensive table tennis information
 export interface Member {
   id: number;
   name: string;
@@ -104,23 +94,19 @@ export interface Member {
   full_name?: string;
   doc_id?: string;
   
-  // Location information
   country?: string;
   province?: string;
   city?: string;
   
-  // Playing style information
   dominant_hand?: 'right' | 'left';
   playing_side?: 'derecho' | 'zurdo';
   playing_style?: 'clasico' | 'lapicero';
   
-  // Racket information
   racket_brand?: string;
   racket_model?: string;
   racket_custom_brand?: string;
   racket_custom_model?: string;
   
-  // Drive rubber information
   drive_rubber_brand?: string;
   drive_rubber_model?: string;
   drive_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
@@ -130,7 +116,6 @@ export interface Member {
   drive_rubber_custom_brand?: string;
   drive_rubber_custom_model?: string;
   
-  // Backhand rubber information
   backhand_rubber_brand?: string;
   backhand_rubber_model?: string;
   backhand_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
@@ -140,20 +125,17 @@ export interface Member {
   backhand_rubber_custom_brand?: string;
   backhand_rubber_custom_model?: string;
   
-  // Additional information
   notes?: string;
   ranking_position?: number;
   ranking_last_updated?: string;
   photo_path?: string;
   
-  // Computed attributes
   age?: number;
   equipment_summary?: EquipmentSummary;
   playing_style_summary?: PlayingStyleSummary;
   location_summary?: LocationSummary;
 }
 
-// Equipment related interfaces
 export interface EquipmentSummary {
   racket: {
     brand?: string;
@@ -189,7 +171,6 @@ export interface LocationSummary {
   city?: string;
 }
 
-// Equipment reference interfaces
 export interface RacketBrand {
   id: number;
   name: string;
@@ -227,7 +208,6 @@ export interface RubberModel {
   is_active: boolean;
 }
 
-// Sport types
 export interface Sport {
   id: number;
   name: string;
@@ -252,7 +232,6 @@ export interface SportParameter {
   updated_at: string;
   sport?: Sport;
   
-  // Additional properties used in the sports management
   param_key: string;
   param_value: string;
   param_type: 'text' | 'number' | 'select' | 'boolean';
@@ -262,7 +241,6 @@ export interface SportParameter {
   typed_value: string | number | boolean;
 }
 
-// Form types
 export interface LeagueForm {
   name: string;
   province: string;
@@ -282,7 +260,6 @@ export interface ClubForm {
   status: 'active' | 'inactive';
   league_id?: number;
   
-  // Additional comprehensive club fields
   ruc?: string;
   country?: string;
   province?: string;
@@ -292,29 +269,24 @@ export interface ClubForm {
   description?: string;
   founded_date?: string;
   
-  // Representative information
   representative_name?: string;
   representative_phone?: string;
   representative_email?: string;
   
-  // Administrator 1
   admin1_name?: string;
   admin1_phone?: string;
   admin1_email?: string;
   
-  // Administrator 2
   admin2_name?: string;
   admin2_phone?: string;
   admin2_email?: string;
   
-  // Administrator 3
   admin3_name?: string;
   admin3_phone?: string;
   admin3_email?: string;
 }
 
 export interface MemberForm {
-  // Basic information
   club_id: number;
   first_name: string;
   last_name: string;
@@ -325,23 +297,19 @@ export interface MemberForm {
   gender?: 'male' | 'female' | 'other';
   status: 'active' | 'inactive';
   
-  // Location information
   country?: string;
   province?: string;
   city?: string;
   
-  // Playing style information
   dominant_hand?: 'right' | 'left';
   playing_side?: 'derecho' | 'zurdo';
   playing_style?: 'clasico' | 'lapicero';
   
-  // Racket information
   racket_brand?: string;
   racket_model?: string;
   racket_custom_brand?: string;
   racket_custom_model?: string;
   
-  // Drive rubber information
   drive_rubber_brand?: string;
   drive_rubber_model?: string;
   drive_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
@@ -351,7 +319,6 @@ export interface MemberForm {
   drive_rubber_custom_brand?: string;
   drive_rubber_custom_model?: string;
   
-  // Backhand rubber information
   backhand_rubber_brand?: string;
   backhand_rubber_model?: string;
   backhand_rubber_type?: 'liso' | 'pupo_largo' | 'pupo_corto' | 'antitopsping';
@@ -361,7 +328,6 @@ export interface MemberForm {
   backhand_rubber_custom_brand?: string;
   backhand_rubber_custom_model?: string;
   
-  // Additional information
   notes?: string;
   ranking_position?: number;
   ranking_last_updated?: string;
@@ -383,7 +349,6 @@ export interface SportParameterForm {
   order: number;
 }
 
-// API Response types
 export interface ApiResponse<T> {
   data: T;
   message?: string;
@@ -400,7 +365,6 @@ export interface PaginatedResponse<T> {
   to: number;
 }
 
-// Tournament types
 export interface Tournament {
   id: number;
   name: string;
@@ -414,10 +378,8 @@ export interface Tournament {
   prize_pool?: number;
   status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'draft' | 'open' | 'in_progress';
   
-  // FIXED: Updated tournament_type to match backend expectations
   tournament_type: 'individual' | 'team';
   
-  // FIXED: tournament_format for the actual elimination type
   tournament_format?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss_system';
   
   club_id?: number;
@@ -431,15 +393,14 @@ export interface Tournament {
   creator?: User;
   participants?: TournamentParticipant[];
   participants_count?: number;
+  matches?: Match[];
   
-  // Additional properties used in tournament management
   location?: string;
   rules?: string;
   current_participants?: number;
   matches_played?: number;
   matches_total?: number;
   
-  // Location fields
   country?: string;
   province?: string;
   city?: string;
@@ -447,7 +408,6 @@ export interface Tournament {
   club_address?: string;
   image?: string;
   
-  // Individual tournament fields
   modality?: 'singles' | 'doubles';
   match_type?: string;
   seeding_type?: string;
@@ -464,7 +424,6 @@ export interface Tournament {
   scheduled_reminder?: boolean;
   reminder_days?: number;
   
-  // Team tournament fields
   team_modality?: string;
   team_match_type?: string;
   team_elimination_type?: string;
@@ -489,14 +448,12 @@ export interface Tournament {
   skill_level?: 'beginner' | 'intermediate' | 'advanced' | 'professional';
   team_size?: number;
   
-  // Prize fields
   first_prize?: string;
   second_prize?: string;
   third_prize?: string;
   fourth_prize?: string;
   fifth_prize?: string;
   
-  // Contact fields
   contact?: string;
   phone?: string;
   ball_info?: string;
@@ -520,7 +477,6 @@ export interface TournamentParticipant {
   created_at: string;
   updated_at: string;
   
-  // Relations
   tournament?: Tournament;
   member?: Member;
 }
@@ -554,14 +510,59 @@ export interface TournamentForm {
   status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'draft' | 'open' | 'in_progress';
 }
 
-// Invitation filter types
+export interface SetData {
+  set_number: number;
+  participant1_score: number;
+  participant2_score: number;
+}
+
+export interface Match {
+  id: number;
+  tournament_id: number;
+  round: number;
+  match_number: number;
+  participant1_id?: number;
+  participant2_id?: number;
+  winner_id?: number;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'bye';
+  scheduled_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  score?: string;
+  notes?: string;
+  court_number?: number;
+  referee?: string;
+  match_format?: string;
+  sets_data?: SetData[];
+  duration_minutes?: number;
+  bracket_position?: number;
+  next_match_id?: number;
+  is_bye: boolean;
+  created_at: string;
+  updated_at: string;
+  
+  tournament?: Tournament;
+  participant1?: TournamentParticipant;
+  participant2?: TournamentParticipant;
+  winner?: TournamentParticipant;
+  next_match?: Match;
+  
+  display_name?: string;
+  participant_names?: {
+    participant1: string;
+    participant2: string;
+    winner?: string;
+  };
+  status_color?: string;
+  status_label?: string;
+}
+
 export interface InvitationFilters {
   type: 'all' | 'sent' | 'received';
   status: 'all' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
   search: string;
 }
 
-// Invitation types
 export interface Invitation {
   id: number;
   email: string;
@@ -576,20 +577,17 @@ export interface Invitation {
   updated_at: string;
   inviter?: User;
   
-  // Role-specific data
   league_id?: number;
   club_id?: number;
   league?: League;
   club?: Club;
   
-  // Additional invitation data
   invitation_data?: {
     league_name?: string;
     club_name?: string;
     message?: string;
   };
   
-  // Extended properties for invitation management
   is_sender?: boolean;
   sender_name?: string;
   receiver_name?: string;
@@ -614,7 +612,6 @@ export interface InvitationForm {
   expires_at?: string;
 }
 
-// Form type for sending invitations (used in UI components)
 export interface SendInvitationForm {
   message: string;
   expires_at: string;
@@ -622,7 +619,6 @@ export interface SendInvitationForm {
   league_name?: string;
 }
 
-// Quick Registration types (for censo)
 export interface QuickRegistration {
   id: number;
   registration_code: string;
@@ -672,7 +668,6 @@ export interface QuickRegistration {
   days_waiting?: number;
 }
 
-// Available entities response type (for invitation endpoints)
 export interface AvailableEntitiesResponse {
   data: PaginatedResponse<League | Club>;
 }

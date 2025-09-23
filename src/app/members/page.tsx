@@ -48,12 +48,22 @@ export default function MembersPage() {
 
   const fetchClubs = useCallback(async () => {
     try {
+      // Use the new endpoint for available clubs
       const response = await makeRequest(() => 
-        api.get<PaginatedResponse<Club>>('/api/clubs?status=active&per_page=100')
+        api.get<{ data: Club[] }>('/api/members/available-clubs')
       );
-      setClubs(response.data.data);
+      setClubs(response.data.data || []);
     } catch (error) {
       console.error('Error fetching clubs:', error);
+      // Fallback to the original endpoint if the new one fails
+      try {
+        const fallbackResponse = await makeRequest(() => 
+          api.get<PaginatedResponse<Club>>('/api/clubs?status=active&per_page=100')
+        );
+        setClubs(fallbackResponse.data.data);
+      } catch (fallbackError) {
+        console.error('Error fetching clubs (fallback):', fallbackError);
+      }
     }
   }, [makeRequest]);
 
@@ -75,15 +85,38 @@ export default function MembersPage() {
     birth_date?: string;
     gender?: 'male' | 'female' | 'other';
     status?: 'active' | 'inactive';
-  }) => {
+  }, photo?: File) => {
     try {
       setIsSubmitting(true);
       
+      // Create FormData if photo is provided
+      const formData = new FormData();
+      
+      // Add all form fields to FormData
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, value.toString());
+        }
+      });
+      
+      // Add photo if provided
+      if (photo) {
+        formData.append('photo', photo);
+      }
+      
       await makeRequest(async () => {
         if (editingMember) {
-          return api.put(`/api/members/${editingMember.id}`, data);
+          return api.post(`/api/members/${editingMember.id}?_method=PUT`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
         } else {
-          return api.post('/api/members', data);
+          return api.post('/api/members', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
         }
       });
       
@@ -178,6 +211,12 @@ export default function MembersPage() {
             <p className="text-gray-600">
               Gestiona los miembros de los clubes y su información personal
             </p>
+            <div className="mt-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+              <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Ahora puedes seleccionar cualquier club disponible en la base de datos para asignar a los miembros
+            </div>
           </div>
           <button
             onClick={() => setShowForm(true)}
@@ -228,7 +267,7 @@ export default function MembersPage() {
                 <option value="" style={{ color: '#111827' }}>Todos los clubes</option>
                 {clubs.map((club) => (
                   <option key={club.id} value={club.id} style={{ color: '#111827' }}>
-                    {club.name}
+                    {club.name} {club.league?.name ? `- ${club.league.name}` : ''}
                   </option>
                 ))}
               </select>
@@ -328,7 +367,10 @@ export default function MembersPage() {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                         </svg>
-                        Club: {member.club?.name} - {member.club?.league?.name}
+                        Club: {member.club?.name} {member.club?.league?.name ? `- ${member.club.league.name}` : ''}
+                        {member.club?.city && (
+                          <span className="text-gray-500">({member.club.city})</span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
