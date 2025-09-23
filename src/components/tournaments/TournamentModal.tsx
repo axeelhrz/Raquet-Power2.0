@@ -334,11 +334,43 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setFormData(prev => ({ ...prev, image: file }));
+      // Create an image element to check dimensions
+      const img = new Image();
       const reader = new FileReader();
+      
       reader.onload = (e) => {
-        setFormData(prev => ({ ...prev, imagePreview: e.target?.result as string }));
+        img.onload = () => {
+          // Check if image dimensions are exactly 1080x1080
+          if (img.width !== 1080 || img.height !== 1080) {
+            setErrors(prev => ({
+              ...prev,
+              image: `La imagen debe tener exactamente 1080 x 1080 píxeles. Imagen actual: ${img.width} x ${img.height} píxeles.`
+            }));
+            // Clear the file input
+            if (event.target) {
+              event.target.value = '';
+            }
+            return;
+          }
+          
+          // Clear any previous image errors
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.image;
+            return newErrors;
+          });
+          
+          // If dimensions are correct, proceed with upload
+          setFormData(prev => ({ 
+            ...prev, 
+            image: file,
+            imagePreview: e.target?.result as string 
+          }));
+        };
+        
+        img.src = e.target?.result as string;
       };
+      
       reader.readAsDataURL(file);
     }
   };
@@ -1530,6 +1562,9 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                 <Typography variant="subtitle1" gutterBottom>
                   Imagen del Torneo
                 </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  La imagen debe tener exactamente 1080 x 1080 píxeles
+                </Typography>
                 <Button
                   variant="outlined"
                   component="label"
@@ -1545,6 +1580,12 @@ const TournamentModal: React.FC<TournamentModalProps> = ({
                     onChange={handleImageUpload}
                   />
                 </Button>
+                
+                {errors.image && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {errors.image}
+                  </Alert>
+                )}
                 
                 {formData.imagePreview && (
                   <Box

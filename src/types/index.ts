@@ -507,15 +507,32 @@ export interface Tournament {
 export interface TournamentParticipant {
   id: number;
   tournament_id: number;
-  member_id: number;
-  registration_date: string;
-  status: 'registered' | 'confirmed' | 'withdrawn' | 'disqualified';
-  seed?: number;
+  member_id?: number;
+  user_name?: string;
+  user_email?: string;
+  user_phone?: string;
+  ranking?: string;
+  seed?: number; // Added seed property for tournament seeding
+  status: 'pending' | 'confirmed' | 'rejected' | 'waiting_list' | 'registered' | 'withdrawn' | 'disqualified';
+  registration_date?: string;
   notes?: string;
+  custom_fields?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  
+  // Relations
   tournament?: Tournament;
   member?: Member;
+}
+
+export interface TournamentParticipantFormData {
+  member_id?: number;
+  user_name?: string;
+  user_email?: string;
+  user_phone?: string;
+  ranking?: string;
+  notes?: string;
+  custom_fields?: Record<string, unknown>;
 }
 
 export interface TournamentForm {

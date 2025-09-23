@@ -39,6 +39,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Tournament } from '@/types';
 import TournamentBracket from './TournamentBracket';
+import TournamentParticipants from './TournamentParticipants';
 
 interface TournamentDetailsModalProps {
   isOpen: boolean;
@@ -218,6 +219,11 @@ export default function TournamentDetailsModal({
             <Tab 
               label="Información General" 
               icon={<InformationCircleIcon style={{ width: 20, height: 20 }} />}
+              iconPosition="start"
+            />
+            <Tab 
+              label="Participantes" 
+              icon={<UserGroupIcon style={{ width: 20, height: 20 }} />}
               iconPosition="start"
             />
             <Tab 
@@ -488,8 +494,15 @@ export default function TournamentDetailsModal({
             </Stack>
           )}
 
-          {/* Bracket Tab */}
+          {/* Participants Tab */}
           {activeTab === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <TournamentParticipants tournament={tournament} isOpen={isOpen} onClose={onClose} />
+            </Box>
+          )}
+
+          {/* Bracket Tab */}
+          {activeTab === 2 && (
             <Box sx={{ mt: 2 }}>
               <TournamentBracket
                 tournamentType={tournament.tournament_type}
