@@ -348,6 +348,7 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
               isOpen={activeTab === 1}
               onClose={() => {}}
               tournament={tournament}
+              embedded={true}
             />
           </TabPanel>
 

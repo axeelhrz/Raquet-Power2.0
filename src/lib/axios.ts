@@ -10,11 +10,11 @@ const getBackendUrl = (): string => {
   }
   
   // In development, use local backend or environment variable
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 };
 
 const api = axios.create({
-  baseURL: getBackendUrl(),
+  baseURL: `${getBackendUrl()}/api`,
   withCredentials: false, // Disable cookies for cross-origin requests
   headers: {
     'Content-Type': 'application/json',
