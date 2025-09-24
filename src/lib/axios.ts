@@ -14,7 +14,7 @@ const getBackendUrl = (): string => {
 };
 
 const api = axios.create({
-  baseURL: `${getBackendUrl()}/api`,
+  baseURL: getBackendUrl(), // Remove the /api suffix since it's already in the backend URL
   withCredentials: false, // Disable cookies for cross-origin requests
   timeout: 10000, // 10 second timeout
   headers: {
