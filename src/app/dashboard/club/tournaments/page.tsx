@@ -189,19 +189,38 @@ export default function ClubTournamentsPage() {
           try {
             // Fetch tournaments for this specific club
             console.log(`Tournaments - Fetching tournaments for club ${userClub.id}...`);
-            const tournamentsResponse = await axios.get(`/api/tournaments?club_id=${userClub.id}`);
+            
+            // Try different endpoints in case one fails
+            let tournamentsResponse;
+            try {
+              // First try with club_id filter
+              tournamentsResponse = await axios.get(`/api/tournaments?club_id=${userClub.id}`);
+            } catch (clubFilterError) {
+              console.log('Tournaments - Club filter failed, trying all tournaments...');
+              // If club filter fails, get all tournaments and filter client-side
+              tournamentsResponse = await axios.get('/api/tournaments');
+            }
+            
             console.log('Tournaments - Tournaments response:', tournamentsResponse.data);
             
             // Handle different response structures
+            let allTournaments = [];
             if (tournamentsResponse.data.data) {
-              clubTournaments = Array.isArray(tournamentsResponse.data.data.data) 
+              allTournaments = Array.isArray(tournamentsResponse.data.data.data) 
                 ? tournamentsResponse.data.data.data 
                 : Array.isArray(tournamentsResponse.data.data)
                 ? tournamentsResponse.data.data
                 : [];
             } else if (Array.isArray(tournamentsResponse.data)) {
-              clubTournaments = tournamentsResponse.data;
+              allTournaments = tournamentsResponse.data;
             }
+            
+            // Filter tournaments by club_id client-side if we got all tournaments
+            clubTournaments = allTournaments.filter((tournament: Tournament) => 
+              userClub &&
+              (tournament.club_id === userClub.id || 
+              tournament.club?.id === userClub.id)
+            );
             
             console.log('Tournaments - Processed tournaments:', clubTournaments);
           } catch (tournamentError) {
