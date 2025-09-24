@@ -336,8 +336,7 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
           <TabPanel value={activeTab} index={0}>
             <TournamentBracket
               key={`bracket-${refreshKey}`}
-              tournament={tournament}
-              canManage={canManage}
+              tournamentId={tournament.id}
               onRefresh={handleRefresh}
             />
           </TabPanel>
@@ -349,6 +348,7 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
               onClose={() => {}}
               tournament={tournament}
               embedded={true}
+              onParticipantsChange={handleRefresh}
             />
           </TabPanel>
 

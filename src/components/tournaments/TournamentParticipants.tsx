@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,700 +12,666 @@ import {
   Stack,
   Card,
   CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
   Avatar,
   Chip,
   IconButton,
   TextField,
+  MenuItem,
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
   Alert,
+  CircularProgress,
   Divider,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction
+  Grid,
+  Paper,
 } from '@mui/material';
 import {
-  PersonAdd,
-  Person,
-  Edit,
-  Delete,
-  CheckCircle,
-  Cancel,
-  Warning,
-  Search,
-  FilterList
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+  Close as CloseIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tournament, TournamentParticipant, Member } from '@/types';
-import api from '@/lib/axios';
+import axios from '@/lib/axios';
+import { useAuth } from '@/contexts/AuthContext';
+import { Tournament } from '@/types';
 
-interface TournamentParticipantsProps {
-  isOpen: boolean;
-  onClose: () => void;
-  tournament: Tournament;
-  embedded?: boolean; // Nueva prop para indicar si está embebido en otro modal
+interface Member {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  photo?: string;
+  ranking?: string;
+  gender?: string;
+  club?: {
+    name: string;
+  };
 }
 
-// Define proper type for Chip color prop
-type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+interface TournamentParticipant {
+  id: number;
+  tournament_id: number;
+  member_id: number;
+  status: 'registered' | 'confirmed' | 'cancelled';
+  registration_date: string;
+  member: Member;
+}
+
+interface TournamentParticipantsProps {
+  tournament: Tournament;
+  isOpen: boolean;
+  onClose: () => void;
+  embedded?: boolean;
+  onParticipantsChange?: () => void;
+}
 
 const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
+  tournament,
   isOpen,
   onClose,
-  tournament,
-  embedded = false
+  embedded = false,
+  onParticipantsChange,
 }) => {
+  const { user } = useAuth();
   const [participants, setParticipants] = useState<TournamentParticipant[]>([]);
   const [availableMembers, setAvailableMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [editingParticipant, setEditingParticipant] = useState<TournamentParticipant | null>(null);
-  const [notes, setNotes] = useState('');
-  const [newStatus, setNewStatus] = useState<string>('registered');
-  const [seed, setSeed] = useState<number | ''>('');
+  const [error, setError] = useState<string | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<TournamentParticipant | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | ''>('');
+  const [participantStatus, setParticipantStatus] = useState<'registered' | 'confirmed' | 'cancelled'>('registered');
 
-  useEffect(() => {
-    if (isOpen || embedded) {
-      fetchParticipants();
-      fetchAvailableMembers();
-    }
-  }, [isOpen, embedded, tournament.id]);
+  // Use refs to prevent multiple simultaneous requests
+  const fetchingParticipants = useRef(false);
+  const fetchingMembers = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
 
-  const fetchParticipants = async () => {
+  // Get max participants with fallback
+  const maxParticipants = tournament.max_participants || 0;
+
+  const fetchParticipants = useCallback(async () => {
+    if (fetchingParticipants.current || !tournament?.id) return;
+    
+    fetchingParticipants.current = true;
+    
     try {
-      setLoading(true);
-      const response = await api.get(`/tournaments/${tournament.id}/participants`);
-      if (response.data.success) {
-        setParticipants(response.data.data);
-      }
+      // Create a new AbortController for this specific request
+      const controller = new AbortController();
+      abortController.current = controller;
+      
+      console.log('🔄 Fetching participants for tournament:', tournament.id);
+      
+      const response = await axios.get(`/tournaments/${tournament.id}/participants`, {
+        signal: controller.signal
+      });
+      
+      console.log('✅ Participants response:', response.data);
+      
+      // Handle both old and new response formats
+      const participantsData = response.data.data || response.data || [];
+      
+      console.log('📊 Participants data:', participantsData);
+      
+      setParticipants(Array.isArray(participantsData) ? participantsData : []);
+      setError(null);
     } catch (error) {
-      console.error('Error fetching participants:', error);
+      if (error instanceof Error && error.name !== 'AbortError' && error.name !== 'CanceledError') {
+        console.error('❌ Error fetching participants:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error instanceof Error && 'response' in error ? (error as { response?: { data?: unknown; status?: number } }).response?.data : undefined,
+          status: error instanceof Error && 'response' in error ? (error as { response?: { data?: unknown; status?: number } }).response?.status : undefined
+        });
+        setError('Error al cargar los participantes');
+      } else if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+        console.log('🚫 Request was cancelled (this is normal in development mode)');
+      }
     } finally {
-      setLoading(false);
+      fetchingParticipants.current = false;
     }
-  };
+  }, [tournament?.id]);
 
-  const fetchAvailableMembers = async () => {
+  const fetchAvailableMembers = useCallback(async () => {
+    if (fetchingMembers.current || !tournament?.id) return;
+    
+    fetchingMembers.current = true;
+    
     try {
-      const response = await api.get(`/tournaments/${tournament.id}/available-members`);
-      if (response.data.success) {
-        setAvailableMembers(response.data.data);
-      }
+      // Create a new AbortController for this specific request
+      const controller = new AbortController();
+      
+      const response = await axios.get(`/tournaments/${tournament.id}/available-members`, {
+        signal: controller.signal
+      });
+      setAvailableMembers(response.data.data || []);
     } catch (error) {
-      console.error('Error fetching available members:', error);
+      if (error instanceof Error && error.name !== 'AbortError' && error.name !== 'CanceledError') {
+        console.error('Error fetching available members:', error);
+        setError('Error al cargar los miembros disponibles');
+      }
+    } finally {
+      fetchingMembers.current = false;
     }
-  };
+  }, [tournament?.id]);
+
+  // Debounced data fetching
+  useEffect(() => {
+    if (!isOpen || !tournament?.id) return;
+
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      Promise.all([
+        fetchParticipants(),
+        fetchAvailableMembers()
+      ]).finally(() => {
+        setLoading(false);
+      });
+    }, 100); // Small delay to prevent rapid successive calls
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, [isOpen, tournament?.id, fetchParticipants, fetchAvailableMembers]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, []);
 
   const handleAddParticipant = async () => {
-    if (!selectedMember) return;
+    if (!selectedMemberId) return;
 
     try {
       setLoading(true);
-      const response = await api.post(`/tournaments/${tournament.id}/participants`, {
-        member_id: selectedMember.id,
-        notes: notes
+      await axios.post(`/tournaments/${tournament.id}/participants`, {
+        member_id: selectedMemberId,
+        status: participantStatus,
       });
 
-      if (response.data.success) {
-        await fetchParticipants();
-        await fetchAvailableMembers();
-        setShowAddModal(false);
-        setSelectedMember(null);
-        setNotes('');
-      }
-    } catch (error: unknown) {
+      await fetchParticipants();
+      await fetchAvailableMembers();
+      setAddModalOpen(false);
+      setSelectedMemberId('');
+      setParticipantStatus('registered');
+      onParticipantsChange?.();
+    } catch (error) {
       console.error('Error adding participant:', error);
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : 'Error al agregar participante';
-      alert(errorMessage);
+      setError('Error al agregar participante');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateParticipant = async () => {
-    if (!editingParticipant) return;
+  const handleEditParticipant = async () => {
+    if (!selectedParticipant) return;
 
     try {
       setLoading(true);
-      const response = await api.put(
-        `/tournaments/${tournament.id}/participants/${editingParticipant.id}`,
-        {
-          status: newStatus,
-          seed: seed || null,
-          notes: notes
-        }
-      );
+      await axios.put(`/tournaments/${tournament.id}/participants/${selectedParticipant.id}`, {
+        status: participantStatus,
+      });
 
-      if (response.data.success) {
-        await fetchParticipants();
-        setEditingParticipant(null);
-        setNotes('');
-        setNewStatus('registered');
-        setSeed('');
-      }
-    } catch (error: unknown) {
+      await fetchParticipants();
+      setEditModalOpen(false);
+      setSelectedParticipant(null);
+      onParticipantsChange?.();
+    } catch (error) {
       console.error('Error updating participant:', error);
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : 'Error al actualizar participante';
-      alert(errorMessage);
+      setError('Error al actualizar participante');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRemoveParticipant = async (participant: TournamentParticipant) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este participante?')) return;
+  const handleDeleteParticipant = async (participantId: number) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este participante?')) return;
 
     try {
       setLoading(true);
-      const response = await api.delete(
-        `/tournaments/${tournament.id}/participants/${participant.id}`
-      );
-
-      if (response.data.success) {
-        await fetchParticipants();
-        await fetchAvailableMembers();
-      }
-    } catch (error: unknown) {
-      console.error('Error removing participant:', error);
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : 'Error al eliminar participante';
-      alert(errorMessage);
+      await axios.delete(`/tournaments/${tournament.id}/participants/${participantId}`);
+      
+      await fetchParticipants();
+      await fetchAvailableMembers();
+      onParticipantsChange?.();
+    } catch (error) {
+      console.error('Error deleting participant:', error);
+      setError('Error al eliminar participante');
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string): ChipColor => {
+  const getStatusColor = (status: string): 'success' | 'info' | 'error' | 'default' => {
     switch (status) {
-      case 'registered': return 'info';
       case 'confirmed': return 'success';
-      case 'withdrawn': return 'warning';
-      case 'disqualified': return 'error';
+      case 'registered': return 'info';
+      case 'cancelled': return 'error';
       default: return 'default';
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'registered': return 'Registrado';
       case 'confirmed': return 'Confirmado';
-      case 'withdrawn': return 'Retirado';
-      case 'disqualified': return 'Descalificado';
+      case 'registered': return 'Registrado';
+      case 'cancelled': return 'Cancelado';
       default: return status;
     }
   };
 
-  const filteredParticipants = participants.filter(participant => {
-    const matchesSearch = participant.member?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         participant.member?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || participant.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const handleRefresh = () => {
+    setLoading(true);
+    Promise.all([
+      fetchParticipants(),
+      fetchAvailableMembers()
+    ]).finally(() => {
+      setLoading(false);
+    });
+  };
 
-  const activeParticipants = participants.filter(p => ['registered', 'confirmed'].includes(p.status));
-
-  // Si está embebido, renderizar solo el contenido sin el Dialog wrapper
   const renderContent = () => (
-    <>
-      {/* Tournament Info */}
-      <Card sx={{ mb: 3, bgcolor: 'primary.50' }}>
+    <Box sx={{ p: embedded ? 0 : 3 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Tournament Info Card */}
+      <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <Box>
-              <Typography variant="h6" color="primary.main">
-                {activeParticipants.length} / {tournament.max_participants}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Participantes Activos
-              </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" component="h2">
+              {tournament.name}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <IconButton onClick={handleRefresh} disabled={loading} size="small">
+                <RefreshIcon />
+              </IconButton>
+              {embedded && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAddModalOpen(true)}
+                  disabled={loading || participants.length >= maxParticipants || availableMembers.length === 0}
+                  size="small"
+                >
+                  Agregar Participante
+                </Button>
+              )}
             </Box>
-            <Divider orientation="vertical" flexItem />
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Fecha límite de inscripción
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip
+              label={`${participants.length}/${maxParticipants} Participantes`}
+              color={participants.length >= maxParticipants ? 'error' : 'primary'}
+              variant="outlined"
+            />
+            <Chip
+              label={`${availableMembers.length} Miembros Disponibles`}
+              color="info"
+              variant="outlined"
+            />
+            {participants.length >= maxParticipants && (
+              <Typography variant="body2" color="error">
+                Torneo completo
               </Typography>
-              <Typography variant="body1" fontWeight="medium">
-                {new Date(tournament.registration_deadline).toLocaleDateString()}
+            )}
+            {availableMembers.length === 0 && participants.length < maxParticipants && (
+              <Typography variant="body2" color="warning.main">
+                No hay miembros disponibles para agregar
               </Typography>
-            </Box>
-            <Divider orientation="vertical" flexItem />
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Estado del torneo
-              </Typography>
-              <Chip 
-                label={tournament.status} 
-                color={tournament.status === 'upcoming' ? 'info' : 'default'}
-                size="small"
-              />
-            </Box>
-            <Box sx={{ ml: 'auto' }}>
-              <Button
-                variant="contained"
-                startIcon={<PersonAdd />}
-                onClick={() => setShowAddModal(true)}
-                disabled={activeParticipants.length >= (tournament.max_participants || 0)}
-              >
-                Agregar Participante
-              </Button>
-            </Box>
-          </Stack>
+            )}
+          </Box>
         </CardContent>
       </Card>
 
-      {/* Filters */}
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <TextField
-          placeholder="Buscar participantes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          size="small"
-          InputProps={{
-            startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
-          }}
-          sx={{ flexGrow: 1 }}
-        />
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Estado</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            label="Estado"
+      {/* Add Participant Button (for non-embedded mode) */}
+      {!embedded && (
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">
+            Participantes
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddModalOpen(true)}
+            disabled={loading || participants.length >= maxParticipants || availableMembers.length === 0}
           >
-            <MenuItem value="all">Todos</MenuItem>
-            <MenuItem value="registered">Registrado</MenuItem>
-            <MenuItem value="confirmed">Confirmado</MenuItem>
-            <MenuItem value="withdrawn">Retirado</MenuItem>
-            <MenuItem value="disqualified">Descalificado</MenuItem>
-          </Select>
-        </FormControl>
-      </Stack>
+            Agregar Participante
+          </Button>
+        </Box>
+      )}
 
       {/* Participants List */}
-      {loading ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography>Cargando participantes...</Typography>
+      {loading && participants.length === 0 ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
         </Box>
-      ) : filteredParticipants.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Person sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
-            No hay participantes
+      ) : participants.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <PersonIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No hay participantes registrados
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {participants.length === 0 
-              ? 'Aún no se han registrado participantes en este torneo'
-              : 'No se encontraron participantes con los filtros aplicados'
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {availableMembers.length > 0 
+              ? 'Agrega el primer participante para comenzar'
+              : 'No hay miembros disponibles en tu club para este torneo'
             }
           </Typography>
-        </Box>
+          {availableMembers.length === 0 && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                Posibles razones por las que no hay miembros disponibles:
+              </Typography>
+              <ul style={{ textAlign: 'left', marginTop: 8 }}>
+                <li>Todos los miembros del club ya están registrados</li>
+                <li>Los filtros del torneo (edad, género, ranking) excluyen a todos los miembros</li>
+                <li>No hay miembros activos en el club</li>
+              </ul>
+            </Alert>
+          )}
+        </Paper>
       ) : (
         <List>
           <AnimatePresence>
-            {filteredParticipants.map((participant, index) => (
+            {participants.map((participant, index) => (
               <motion.div
                 key={participant.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: index * 0.1 }}
               >
                 <ListItem
                   sx={{
-                    border: '1px solid',
+                    border: 1,
                     borderColor: 'divider',
-                    borderRadius: 2,
+                    borderRadius: 1,
                     mb: 1,
-                    bgcolor: 'background.paper'
+                    bgcolor: 'background.paper',
                   }}
+                  secondaryAction={
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        edge="end"
+                        onClick={() => {
+                          setSelectedParticipant(participant);
+                          setParticipantStatus(participant.status);
+                          setEditModalOpen(true);
+                        }}
+                        size="small"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleDeleteParticipant(participant.id)}
+                        size="small"
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  }
                 >
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {participant.member?.full_name?.charAt(0) || 'P'}
+                    <Avatar
+                      src={participant.member.photo}
+                      sx={{ bgcolor: 'primary.main' }}
+                    >
+                      {participant.member.first_name[0]}{participant.member.last_name[0]}
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary={
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Typography variant="subtitle1" fontWeight="medium">
-                          {participant.member?.full_name || 'Sin nombre'}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="subtitle1" component="span">
+                          {participant.member.first_name} {participant.member.last_name}
                         </Typography>
                         <Chip
                           label={getStatusLabel(participant.status)}
                           color={getStatusColor(participant.status)}
                           size="small"
                         />
-                        {participant.seed && (
+                        {participant.member.club && (
                           <Chip
-                            label={`Seed #${participant.seed}`}
+                            label={participant.member.club.name}
                             variant="outlined"
                             size="small"
                           />
                         )}
-                      </Stack>
+                      </Box>
                     }
                     secondary={
-                      <Stack spacing={0.5}>
-                        <Typography variant="body2" color="text.secondary">
-                          {participant.member?.email}
+                      <Stack spacing={0.5} sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary" component="span">
+                          {participant.member.email}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Registrado: {participant.registration_date 
-                            ? new Date(participant.registration_date).toLocaleDateString()
-                            : 'Fecha no disponible'
-                          }
-                        </Typography>
-                        {participant.notes && (
-                          <Typography variant="caption" color="text.secondary">
-                            Notas: {participant.notes}
+                        {participant.member.ranking && (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            Ranking: {participant.member.ranking}
                           </Typography>
                         )}
+                        {participant.member.gender && (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            Género: {participant.member.gender === 'male' ? 'Masculino' : participant.member.gender === 'female' ? 'Femenino' : 'Mixto'}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary" component="span">
+                          Registrado: {new Date(participant.registration_date).toLocaleDateString()}
+                        </Typography>
                       </Stack>
                     }
                   />
-                  <ListItemSecondaryAction>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setEditingParticipant(participant);
-                          setNewStatus(participant.status);
-                          setSeed(participant.seed || '');
-                          setNotes(participant.notes || '');
-                        }}
-                      >
-                        <Edit />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemoveParticipant(participant)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Stack>
-                  </ListItemSecondaryAction>
                 </ListItem>
               </motion.div>
             ))}
           </AnimatePresence>
         </List>
       )}
-    </>
-  );
-
-  if (embedded) {
-    return (
-      <>
-        {renderContent()}
-        
-        {/* Add Participant Modal */}
-        <Dialog
-          open={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>Agregar Participante</DialogTitle>
-          <DialogContent>
-            <Stack spacing={3} sx={{ mt: 1 }}>
-              <FormControl fullWidth>
-                <InputLabel>Seleccionar Miembro</InputLabel>
-                <Select
-                  value={selectedMember?.id || ''}
-                  onChange={(e) => {
-                    const member = availableMembers.find(m => m.id === e.target.value);
-                    setSelectedMember(member || null);
-                  }}
-                  label="Seleccionar Miembro"
-                >
-                  {availableMembers.map((member) => (
-                    <MenuItem key={member.id} value={member.id}>
-                      <Stack>
-                        <Typography>{member.full_name || member.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {member.email} - {member.club?.name}
-                        </Typography>
-                      </Stack>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Notas (opcional)"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                multiline
-                rows={3}
-                fullWidth
-              />
-
-              {availableMembers.length === 0 && (
-                <Alert severity="info">
-                  No hay miembros disponibles para agregar a este torneo.
-                </Alert>
-              )}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowAddModal(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAddParticipant}
-              variant="contained"
-              disabled={!selectedMember || loading}
-            >
-              Agregar
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Edit Participant Modal */}
-        <Dialog
-          open={!!editingParticipant}
-          onClose={() => setEditingParticipant(null)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>Editar Participante</DialogTitle>
-          <DialogContent>
-            <Stack spacing={3} sx={{ mt: 1 }}>
-              <Typography variant="subtitle1">
-                {editingParticipant?.member?.full_name}
-              </Typography>
-
-              <FormControl fullWidth>
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  label="Estado"
-                >
-                  <MenuItem value="registered">Registrado</MenuItem>
-                  <MenuItem value="confirmed">Confirmado</MenuItem>
-                  <MenuItem value="withdrawn">Retirado</MenuItem>
-                  <MenuItem value="disqualified">Descalificado</MenuItem>
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Seed (opcional)"
-                type="number"
-                value={seed}
-                onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : '')}
-                fullWidth
-                inputProps={{ min: 1 }}
-              />
-
-              <TextField
-                label="Notas"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                multiline
-                rows={3}
-                fullWidth
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingParticipant(null)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleUpdateParticipant}
-              variant="contained"
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </>
-    );
-  }
-
-  // Renderizado normal como modal independiente
-  return (
-    <>
-      <Dialog
-        open={isOpen}
-        onClose={onClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: 3, minHeight: '80vh' }
-        }}
-      >
-        <DialogTitle>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Box>
-              <Typography variant="h5" component="div" fontWeight="bold">
-                Participantes del Torneo
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {tournament.name}
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<PersonAdd />}
-              onClick={() => setShowAddModal(true)}
-              disabled={activeParticipants.length >= (tournament.max_participants || 0)}
-            >
-              Agregar Participante
-            </Button>
-          </Stack>
-        </DialogTitle>
-
-        <DialogContent sx={{ px: 3, py: 2 }}>
-          {renderContent()}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Add Participant Modal */}
-      <Dialog
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Agregar Participante</DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel>Seleccionar Miembro</InputLabel>
-              <Select
-                value={selectedMember?.id || ''}
-                onChange={(e) => {
-                  const member = availableMembers.find(m => m.id === e.target.value);
-                  setSelectedMember(member || null);
-                }}
-                label="Seleccionar Miembro"
-              >
-                {availableMembers.map((member) => (
-                  <MenuItem key={member.id} value={member.id}>
-                    <Stack>
-                      <Typography>{member.full_name || member.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {member.email} - {member.club?.name}
-                      </Typography>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Notas (opcional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              multiline
-              rows={3}
-              fullWidth
-            />
-
-            {availableMembers.length === 0 && (
-              <Alert severity="info">
-                No hay miembros disponibles para agregar a este torneo.
+          <Box sx={{ pt: 2 }}>
+            {availableMembers.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="body2" gutterBottom>
+                  No hay miembros disponibles para agregar a este torneo.
+                </Typography>
+                <Typography variant="body2">
+                  Esto puede deberse a que todos los miembros ya están registrados o no cumplen con los filtros del torneo.
+                </Typography>
               </Alert>
+            ) : (
+              <>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Seleccionar Miembro</InputLabel>
+                  <Select
+                    value={selectedMemberId}
+                    onChange={(e) => setSelectedMemberId(e.target.value as number)}
+                    label="Seleccionar Miembro"
+                  >
+                    {availableMembers.map((member) => (
+                      <MenuItem key={member.id} value={member.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                          <Avatar
+                            src={member.photo}
+                            sx={{ width: 32, height: 32 }}
+                          >
+                            {member.first_name[0]}{member.last_name[0]}
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body1">
+                              {member.first_name} {member.last_name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {member.email}
+                              </Typography>
+                              {member.ranking && (
+                                <Chip
+                                  label={`Ranking: ${member.ranking}`}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                              {member.club && (
+                                <Chip
+                                  label={member.club.name}
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel>Estado</InputLabel>
+                  <Select
+                    value={participantStatus}
+                    onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'cancelled')}
+                    label="Estado"
+                  >
+                    <MenuItem value="registered">Registrado</MenuItem>
+                    <MenuItem value="confirmed">Confirmado</MenuItem>
+                    <MenuItem value="cancelled">Cancelado</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
             )}
-          </Stack>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowAddModal(false)}>
+          <Button onClick={() => setAddModalOpen(false)}>
             Cancelar
           </Button>
           <Button
             onClick={handleAddParticipant}
             variant="contained"
-            disabled={!selectedMember || loading}
+            disabled={!selectedMemberId || loading || availableMembers.length === 0}
           >
-            Agregar
+            {loading ? <CircularProgress size={20} /> : 'Agregar'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Participant Modal */}
-      <Dialog
-        open={!!editingParticipant}
-        onClose={() => setEditingParticipant(null)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Editar Participante</DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <Typography variant="subtitle1">
-              {editingParticipant?.member?.full_name}
-            </Typography>
+          {selectedParticipant && (
+            <Box sx={{ pt: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Avatar
+                  src={selectedParticipant.member.photo}
+                  sx={{ width: 56, height: 56 }}
+                >
+                  {selectedParticipant.member.first_name[0]}{selectedParticipant.member.last_name[0]}
+                </Avatar>
+                <Box>
+                  <Typography variant="h6">
+                    {selectedParticipant.member.first_name} {selectedParticipant.member.last_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedParticipant.member.email}
+                  </Typography>
+                  {selectedParticipant.member.club && (
+                    <Chip
+                      label={selectedParticipant.member.club.name}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                    />
+                  )}
+                </Box>
+              </Box>
 
-            <FormControl fullWidth>
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                label="Estado"
-              >
-                <MenuItem value="registered">Registrado</MenuItem>
-                <MenuItem value="confirmed">Confirmado</MenuItem>
-                <MenuItem value="withdrawn">Retirado</MenuItem>
-                <MenuItem value="disqualified">Descalificado</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Seed (opcional)"
-              type="number"
-              value={seed}
-              onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : '')}
-              fullWidth
-              inputProps={{ min: 1 }}
-            />
-
-            <TextField
-              label="Notas"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              multiline
-              rows={3}
-              fullWidth
-            />
-          </Stack>
+              <FormControl fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={participantStatus}
+                  onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'cancelled')}
+                  label="Estado"
+                >
+                  <MenuItem value="registered">Registrado</MenuItem>
+                  <MenuItem value="confirmed">Confirmado</MenuItem>
+                  <MenuItem value="cancelled">Cancelado</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditingParticipant(null)}>
+          <Button onClick={() => setEditModalOpen(false)}>
             Cancelar
           </Button>
           <Button
-            onClick={handleUpdateParticipant}
+            onClick={handleEditParticipant}
             variant="contained"
             disabled={loading}
           >
-            Actualizar
+            {loading ? <CircularProgress size={20} /> : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Box>
+  );
+
+  if (embedded) {
+    return renderContent();
+  }
+
+  return (
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: { height: '80vh' }
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">
+          Participantes del Torneo
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 0 }}>
+        {renderContent()}
+      </DialogContent>
+    </Dialog>
   );
 };
 

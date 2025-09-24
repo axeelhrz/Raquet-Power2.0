@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Get the backend URL from environment variables
 const getBackendUrl = (): string => {
@@ -16,6 +16,7 @@ const getBackendUrl = (): string => {
 const api = axios.create({
   baseURL: `${getBackendUrl()}/api`,
   withCredentials: false, // Disable cookies for cross-origin requests
+  timeout: 10000, // 10 second timeout
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -23,40 +24,18 @@ const api = axios.create({
   },
 });
 
-// Function to get CSRF token from cookie
-const getCsrfTokenFromCookie = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  
-  const name = 'XSRF-TOKEN';
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    const token = parts.pop()?.split(';').shift();
-    return token ? decodeURIComponent(token) : null;
-  }
-  return null;
+// Request queue to prevent too many simultaneous requests
+const requestQueue = new Map<string, Promise<AxiosResponse>>();
+
+// Function to create a request key for deduplication
+const createRequestKey = (config: AxiosRequestConfig | InternalAxiosRequestConfig): string => {
+  return `${config.method?.toUpperCase()}-${config.url}-${JSON.stringify(config.params || {})}`;
 };
 
 // Function to get stored auth token
 const getStoredToken = (): string | null => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('auth_token');
-};
-
-// Function to get CSRF token using the backend URL
-const getCsrfToken = async (): Promise<void> => {
-  try {
-    const backendUrl = getBackendUrl();
-    await axios.get(`${backendUrl}/sanctum/csrf-cookie`, {
-      withCredentials: false, // Don't use cookies for CSRF in cross-origin
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-  } catch (error) {
-    console.error('Failed to get CSRF token:', error);
-    // Don't throw error for CSRF token failures in cross-origin setup
-  }
 };
 
 // List of endpoints that don't require CSRF tokens
@@ -74,7 +53,13 @@ const isCSRFExempt = (url: string): boolean => {
 
 // Request interceptor
 api.interceptors.request.use(
-  async (config) => {
+  async (config: InternalAxiosRequestConfig) => {
+    // Validate URL parameters to prevent undefined values
+    if (config.url?.includes('undefined')) {
+      console.error('🚨 Request URL contains undefined parameter:', config.url);
+      throw new Error('Invalid request: URL contains undefined parameter');
+    }
+    
     // Log the request URL for debugging
     console.log('🌐 Making request to:', `${config.baseURL}${config.url}`);
     console.log('🔧 Backend URL:', getBackendUrl());
@@ -87,9 +72,15 @@ api.interceptors.request.use(
       console.log('🔑 Added auth token to request');
     }
     
-    // For cross-origin requests, skip CSRF tokens as they don't work reliably
-    // The backend should be configured to not require CSRF for API endpoints
-    // when using token-based authentication
+    // Request deduplication for GET requests - we can't return a promise here
+    // This will be handled in the makeRequest function instead
+    if (config.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(config);
+      
+      if (requestQueue.has(requestKey)) {
+        console.log('🔄 Request already in progress:', requestKey);
+      }
+    }
     
     return config;
   },
@@ -103,18 +94,47 @@ api.interceptors.response.use(
   (response) => {
     // Log successful responses for debugging
     console.log('✅ Request successful:', response.status, response.config.url);
+    
+    // Remove from request queue if it was a GET request
+    if (response.config.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(response.config);
+      requestQueue.delete(requestKey);
+    }
+    
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
     
+    // Remove from request queue if it was a GET request
+    if (originalRequest?.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(originalRequest);
+      requestQueue.delete(requestKey);
+    }
+    
     // Log the error for debugging
     console.error('🚨 API Error:', {
       status: error.response?.status,
-      url: `${originalRequest.baseURL}${originalRequest.url}`,
+      url: originalRequest ? `${originalRequest.baseURL}${originalRequest.url}` : 'unknown',
       message: error.message,
       data: error.response?.data
     });
+    
+    // Handle network errors
+    if (error.code === 'ERR_NETWORK' || error.code === 'ERR_INSUFFICIENT_RESOURCES') {
+      console.error('🌐 Network error detected:', error.code);
+      // Check if it's a CORS error
+      if (error.message.includes('CORS') || error.message.includes('Access-Control-Allow-Origin')) {
+        return Promise.reject(new Error('Error de CORS. Verifica la configuración del servidor.'));
+      }
+      return Promise.reject(new Error('Error de conexión. Por favor, intenta de nuevo.'));
+    }
+    
+    // Handle timeout errors
+    if (error.code === 'ECONNABORTED') {
+      console.error('⏰ Request timeout');
+      return Promise.reject(new Error('La solicitud tardó demasiado. Por favor, intenta de nuevo.'));
+    }
     
     // Handle 401 Unauthorized - token expired or invalid
     if (error.response?.status === 401) {
@@ -143,8 +163,72 @@ api.interceptors.response.use(
       // Don't redirect, let the component handle this
     }
     
+    // Handle 404 Not Found
+    if (error.response?.status === 404) {
+      console.log('🚨 404 Not Found - resource not found');
+      // Don't redirect, let the component handle this
+    }
+    
+    // Handle 500 Internal Server Error
+    if (error.response?.status === 500) {
+      console.log('🚨 500 Internal Server Error - server error');
+      // Don't redirect, let the component handle this
+    }
+    
     return Promise.reject(error);
   }
 );
+
+// Enhanced request function with retry logic for critical requests
+export const makeRequest = async (config: AxiosRequestConfig, retries = 0): Promise<AxiosResponse> => {
+  try {
+    // Validate config before making request
+    if (config.url?.includes('undefined')) {
+      throw new Error('Invalid request: URL contains undefined parameter');
+    }
+    
+    // For GET requests, check if we already have this request in progress
+    if (config.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(config);
+      
+      if (requestQueue.has(requestKey)) {
+        return await requestQueue.get(requestKey)!;
+      }
+      
+      // Add to queue
+      const requestPromise = api(config);
+      requestQueue.set(requestKey, requestPromise);
+      
+      try {
+        const result = await requestPromise;
+        requestQueue.delete(requestKey);
+        return result;
+      } catch (error) {
+        requestQueue.delete(requestKey);
+        throw error;
+      }
+    }
+    
+    return await api(config);
+  } catch (error: unknown) {
+    // Don't retry if the error is due to invalid parameters
+    if (error instanceof Error && error.message?.includes('undefined parameter')) {
+      throw error;
+    }
+    
+    // Retry logic for network errors
+    if (
+      retries < 2 && 
+      error instanceof Error &&
+      ('code' in error && (error.code === 'ERR_NETWORK' || error.code === 'ERR_INSUFFICIENT_RESOURCES'))
+    ) {
+      console.log(`🔄 Retrying request (attempt ${retries + 1}/2)`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1))); // Exponential backoff
+      return makeRequest(config, retries + 1);
+    }
+    
+    throw error;
+  }
+};
 
 export default api;
