@@ -163,31 +163,78 @@ export default function ClubTournamentsPage() {
 
       if (user.role === 'club') {
         // First, get the club information
+        console.log('Tournaments - Fetching clubs...');
         const clubsResponse = await axios.get('/api/clubs');
         console.log('Tournaments - Clubs response:', clubsResponse.data);
         
-        const allClubs = clubsResponse.data.data;
-        userClub = allClubs.data.find((club: Club) => club.user_id === user.id) || null;
+        // Handle different response structures
+        let allClubs = [];
+        if (clubsResponse.data.data) {
+          // If response has nested data structure
+          allClubs = Array.isArray(clubsResponse.data.data.data) 
+            ? clubsResponse.data.data.data 
+            : Array.isArray(clubsResponse.data.data)
+            ? clubsResponse.data.data
+            : [];
+        } else if (Array.isArray(clubsResponse.data)) {
+          // If response is directly an array
+          allClubs = clubsResponse.data;
+        }
+        
+        console.log('Tournaments - All clubs:', allClubs);
+        userClub = allClubs.find((club: Club) => club.user_id === user.id) || null;
         console.log('Tournaments - User club found:', userClub);
 
         if (userClub) {
-          // Fetch tournaments for this specific club
-          const tournamentsResponse = await axios.get(`/api/tournaments?club_id=${userClub.id}`);
-          console.log('Tournaments - Tournaments response:', tournamentsResponse.data);
-          
-          if (tournamentsResponse.data.data) {
-            clubTournaments = Array.isArray(tournamentsResponse.data.data.data) 
-              ? tournamentsResponse.data.data.data 
-              : Array.isArray(tournamentsResponse.data.data)
-              ? tournamentsResponse.data.data
-              : [];
+          try {
+            // Fetch tournaments for this specific club
+            console.log(`Tournaments - Fetching tournaments for club ${userClub.id}...`);
+            const tournamentsResponse = await axios.get(`/api/tournaments?club_id=${userClub.id}`);
+            console.log('Tournaments - Tournaments response:', tournamentsResponse.data);
+            
+            // Handle different response structures
+            if (tournamentsResponse.data.data) {
+              clubTournaments = Array.isArray(tournamentsResponse.data.data.data) 
+                ? tournamentsResponse.data.data.data 
+                : Array.isArray(tournamentsResponse.data.data)
+                ? tournamentsResponse.data.data
+                : [];
+            } else if (Array.isArray(tournamentsResponse.data)) {
+              clubTournaments = tournamentsResponse.data;
+            }
+            
+            console.log('Tournaments - Processed tournaments:', clubTournaments);
+          } catch (tournamentError) {
+            console.error('Tournaments - Error fetching tournaments:', tournamentError);
+            
+            // If tournaments fetch fails, still show the club info but with empty tournaments
+            clubTournaments = [];
+            
+            // Show user-friendly error message
+            if (tournamentError instanceof Error && 'response' in tournamentError) {
+              const axiosError = tournamentError as { response?: { status?: number; data?: unknown } };
+              if (axiosError.response?.status === 500) {
+                console.error('Tournaments - Server error when fetching tournaments. This might be a backend issue.');
+                // Don't throw here, just log and continue with empty tournaments
+              }
+            }
           }
+        } else {
+          console.warn('Tournaments - No club found for user:', user.id);
         }
       } else if (user.role === 'super_admin') {
-        // Super admin can see all tournaments
-        const tournamentsResponse = await axios.get('/api/tournaments');
-        const allTournaments = tournamentsResponse.data.data;
-        clubTournaments = Array.isArray(allTournaments.data) ? allTournaments.data : allTournaments;
+        try {
+          // Super admin can see all tournaments
+          console.log('Tournaments - Fetching all tournaments for super admin...');
+          const tournamentsResponse = await axios.get('/api/tournaments');
+          console.log('Tournaments - All tournaments response:', tournamentsResponse.data);
+          
+          const allTournaments = tournamentsResponse.data.data;
+          clubTournaments = Array.isArray(allTournaments.data) ? allTournaments.data : allTournaments;
+        } catch (tournamentError) {
+          console.error('Tournaments - Error fetching all tournaments:', tournamentError);
+          clubTournaments = [];
+        }
       }
 
       // Calculate stats
@@ -197,6 +244,9 @@ export default function ClubTournamentsPage() {
         completed_tournaments: clubTournaments.filter(t => t.status === 'completed').length,
         draft_tournaments: clubTournaments.filter(t => t.status === 'draft').length,
       };
+
+      console.log('Tournaments - Final stats:', stats);
+      console.log('Tournaments - Final tournaments:', clubTournaments);
 
       // Update state
       setTournaments(clubTournaments);
@@ -211,6 +261,19 @@ export default function ClubTournamentsPage() {
 
     } catch (error) {
       console.error('Tournaments - Error fetching data:', error);
+      
+      // Provide more detailed error information
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: unknown } };
+        console.error('Tournaments - Error details:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data
+        });
+      }
+      
+      // Set empty state on error
+      setTournaments([]);
+      setCurrentClub(null);
     } finally {
       setLoadingData(false);
     }
@@ -298,7 +361,13 @@ export default function ClubTournamentsPage() {
       console.log('✅ Tournament created successfully:', response.data);
       
       // Check if response has success flag and data
-      if (response.data.success) {
+      if (response.data.success || response.status === 200 || response.status === 201) {
+        // Clear cache immediately
+        if (cacheKey.current) {
+          localStorage.removeItem(cacheKey.current);
+        }
+        
+        // Force refresh data
         await fetchData(true);
         setIsCreateModalOpen(false);
         
