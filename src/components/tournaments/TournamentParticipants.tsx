@@ -53,6 +53,7 @@ interface Member {
   ranking?: string;
   gender?: string;
   club?: {
+    id: number;
     name: string;
   };
 }
@@ -61,7 +62,7 @@ interface TournamentParticipant {
   id: number;
   tournament_id: number;
   member_id: number;
-  status: 'registered' | 'confirmed' | 'cancelled';
+  status: 'registered' | 'confirmed' | 'withdrawn' | 'disqualified';
   registration_date: string;
   member: Member;
 }
@@ -90,7 +91,7 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<TournamentParticipant | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | ''>('');
-  const [participantStatus, setParticipantStatus] = useState<'registered' | 'confirmed' | 'cancelled'>('registered');
+  const [participantStatus, setParticipantStatus] = useState<'registered' | 'confirmed' | 'withdrawn' | 'disqualified'>('registered');
 
   // Use refs to prevent multiple simultaneous requests
   const fetchingParticipants = useRef(false);
@@ -112,18 +113,22 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
       
       console.log('🔄 Fetching participants for tournament:', tournament.id);
       
-      const response = await axios.get(`/tournaments/${tournament.id}/participants`, {
+      const response = await axios.get(`/api/tournaments/${tournament.id}/participants`, {
         signal: controller.signal
       });
       
       console.log('✅ Participants response:', response.data);
       
-      // Handle both old and new response formats
-      const participantsData = response.data.data || response.data || [];
+      // Handle the response data structure
+      if (response.data.success) {
+        const participantsData = response.data.data || [];
+        console.log('📊 Participants data:', participantsData);
+        setParticipants(Array.isArray(participantsData) ? participantsData : []);
+      } else {
+        console.warn('⚠️ API response indicates failure:', response.data);
+        setParticipants([]);
+      }
       
-      console.log('📊 Participants data:', participantsData);
-      
-      setParticipants(Array.isArray(participantsData) ? participantsData : []);
       setError(null);
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError' && error.name !== 'CanceledError') {
@@ -134,6 +139,7 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
           status: error instanceof Error && 'response' in error ? (error as { response?: { data?: unknown; status?: number } }).response?.status : undefined
         });
         setError('Error al cargar los participantes');
+        setParticipants([]);
       } else if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
         console.log('🚫 Request was cancelled (this is normal in development mode)');
       }
@@ -151,14 +157,27 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
       // Create a new AbortController for this specific request
       const controller = new AbortController();
       
-      const response = await axios.get(`/tournaments/${tournament.id}/available-members`, {
+      console.log('🔄 Fetching available members for tournament:', tournament.id);
+      
+      const response = await axios.get(`/api/tournaments/${tournament.id}/available-members`, {
         signal: controller.signal
       });
-      setAvailableMembers(response.data.data || []);
+      
+      console.log('✅ Available members response:', response.data);
+      
+      if (response.data.success) {
+        const membersData = response.data.data || [];
+        console.log('👥 Available members data:', membersData);
+        setAvailableMembers(Array.isArray(membersData) ? membersData : []);
+      } else {
+        console.warn('⚠️ Available members API response indicates failure:', response.data);
+        setAvailableMembers([]);
+      }
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError' && error.name !== 'CanceledError') {
-        console.error('Error fetching available members:', error);
+        console.error('❌ Error fetching available members:', error);
         setError('Error al cargar los miembros disponibles');
+        setAvailableMembers([]);
       }
     } finally {
       fetchingMembers.current = false;
@@ -201,20 +220,34 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
 
     try {
       setLoading(true);
-      await axios.post(`/tournaments/${tournament.id}/participants`, {
+      console.log('➕ Adding participant:', { member_id: selectedMemberId, status: participantStatus });
+      
+      const response = await axios.post(`/api/tournaments/${tournament.id}/participants`, {
         member_id: selectedMemberId,
         status: participantStatus,
       });
 
-      await fetchParticipants();
-      await fetchAvailableMembers();
-      setAddModalOpen(false);
-      setSelectedMemberId('');
-      setParticipantStatus('registered');
-      onParticipantsChange?.();
+      console.log('✅ Participant added:', response.data);
+
+      if (response.data.success) {
+        await fetchParticipants();
+        await fetchAvailableMembers();
+        setAddModalOpen(false);
+        setSelectedMemberId('');
+        setParticipantStatus('registered');
+        onParticipantsChange?.();
+        setError(null);
+      } else {
+        setError(response.data.message || 'Error al agregar participante');
+      }
     } catch (error) {
-      console.error('Error adding participant:', error);
-      setError('Error al agregar participante');
+      console.error('❌ Error adding participant:', error);
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Error al agregar participante');
+      } else {
+        setError('Error al agregar participante');
+      }
     } finally {
       setLoading(false);
     }
@@ -225,17 +258,31 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
 
     try {
       setLoading(true);
-      await axios.put(`/tournaments/${tournament.id}/participants/${selectedParticipant.id}`, {
+      console.log('✏️ Updating participant:', { id: selectedParticipant.id, status: participantStatus });
+      
+      const response = await axios.put(`/api/tournaments/${tournament.id}/participants/${selectedParticipant.id}`, {
         status: participantStatus,
       });
 
-      await fetchParticipants();
-      setEditModalOpen(false);
-      setSelectedParticipant(null);
-      onParticipantsChange?.();
+      console.log('✅ Participant updated:', response.data);
+
+      if (response.data.success) {
+        await fetchParticipants();
+        setEditModalOpen(false);
+        setSelectedParticipant(null);
+        onParticipantsChange?.();
+        setError(null);
+      } else {
+        setError(response.data.message || 'Error al actualizar participante');
+      }
     } catch (error) {
-      console.error('Error updating participant:', error);
-      setError('Error al actualizar participante');
+      console.error('❌ Error updating participant:', error);
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Error al actualizar participante');
+      } else {
+        setError('Error al actualizar participante');
+      }
     } finally {
       setLoading(false);
     }
@@ -246,24 +293,39 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
 
     try {
       setLoading(true);
-      await axios.delete(`/tournaments/${tournament.id}/participants/${participantId}`);
+      console.log('🗑️ Deleting participant:', participantId);
       
-      await fetchParticipants();
-      await fetchAvailableMembers();
-      onParticipantsChange?.();
+      const response = await axios.delete(`/api/tournaments/${tournament.id}/participants/${participantId}`);
+      
+      console.log('✅ Participant deleted:', response.data);
+
+      if (response.data.success) {
+        await fetchParticipants();
+        await fetchAvailableMembers();
+        onParticipantsChange?.();
+        setError(null);
+      } else {
+        setError(response.data.message || 'Error al eliminar participante');
+      }
     } catch (error) {
-      console.error('Error deleting participant:', error);
-      setError('Error al eliminar participante');
+      console.error('❌ Error deleting participant:', error);
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Error al eliminar participante');
+      } else {
+        setError('Error al eliminar participante');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string): 'success' | 'info' | 'error' | 'default' => {
+  const getStatusColor = (status: string): 'success' | 'info' | 'error' | 'warning' | 'default' => {
     switch (status) {
       case 'confirmed': return 'success';
       case 'registered': return 'info';
-      case 'cancelled': return 'error';
+      case 'withdrawn': return 'warning';
+      case 'disqualified': return 'error';
       default: return 'default';
     }
   };
@@ -272,13 +334,15 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
     switch (status) {
       case 'confirmed': return 'Confirmado';
       case 'registered': return 'Registrado';
-      case 'cancelled': return 'Cancelado';
+      case 'withdrawn': return 'Retirado';
+      case 'disqualified': return 'Descalificado';
       default: return status;
     }
   };
 
   const handleRefresh = () => {
     setLoading(true);
+    setError(null);
     Promise.all([
       fetchParticipants(),
       fetchAvailableMembers()
@@ -322,7 +386,7 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip
-              label={`${participants.length}/${maxParticipants} Participantes`}
+              label={`${participants.length}/${maxParticipants || '∞'} Participantes`}
               color={participants.length >= maxParticipants ? 'error' : 'primary'}
               variant="outlined"
             />
@@ -331,7 +395,7 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
               color="info"
               variant="outlined"
             />
-            {participants.length >= maxParticipants && (
+            {maxParticipants > 0 && participants.length >= maxParticipants && (
               <Typography variant="body2" color="error">
                 Torneo completo
               </Typography>
@@ -355,7 +419,7 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setAddModalOpen(true)}
-            disabled={loading || participants.length >= maxParticipants || availableMembers.length === 0}
+            disabled={loading || (maxParticipants > 0 && participants.length >= maxParticipants) || availableMembers.length === 0}
           >
             Agregar Participante
           </Button>
@@ -558,12 +622,13 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
                   <InputLabel>Estado</InputLabel>
                   <Select
                     value={participantStatus}
-                    onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'cancelled')}
+                    onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'withdrawn' | 'disqualified')}
                     label="Estado"
                   >
                     <MenuItem value="registered">Registrado</MenuItem>
                     <MenuItem value="confirmed">Confirmado</MenuItem>
-                    <MenuItem value="cancelled">Cancelado</MenuItem>
+                    <MenuItem value="withdrawn">Retirado</MenuItem>
+                    <MenuItem value="disqualified">Descalificado</MenuItem>
                   </Select>
                 </FormControl>
               </>
@@ -619,12 +684,13 @@ const TournamentParticipants: React.FC<TournamentParticipantsProps> = ({
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={participantStatus}
-                  onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'cancelled')}
+                  onChange={(e) => setParticipantStatus(e.target.value as 'registered' | 'confirmed' | 'withdrawn' | 'disqualified')}
                   label="Estado"
                 >
                   <MenuItem value="registered">Registrado</MenuItem>
                   <MenuItem value="confirmed">Confirmado</MenuItem>
-                  <MenuItem value="cancelled">Cancelado</MenuItem>
+                  <MenuItem value="withdrawn">Retirado</MenuItem>
+                  <MenuItem value="disqualified">Descalificado</MenuItem>
                 </Select>
               </FormControl>
             </Box>

@@ -97,24 +97,31 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get(`/tournaments/${tournamentId}/matches`);
+      console.log('🔄 Fetching matches for tournament:', tournamentId);
+      
+      const response = await api.get(`/api/tournaments/${tournamentId}/matches`);
+      console.log('✅ Matches response:', response.data);
+      
       if (response.data?.success) {
-        setMatches(response.data.data || []);
+        const matchesData = response.data.data || [];
+        console.log('📊 Matches data:', matchesData);
+        setMatches(Array.isArray(matchesData) ? matchesData : []);
       } else if (Array.isArray(response.data)) {
         setMatches(response.data);
       } else {
+        console.warn('⚠️ Unexpected matches response format:', response.data);
         setMatches([]);
       }
     } catch (error: unknown) {
-      console.error('Error fetching matches:', error);
+      console.error('❌ Error fetching matches:', error);
       if (error instanceof Error && 'response' in error) {
-        const axiosError = error as { response?: { status?: number } };
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
         if (axiosError.response?.status === 404) {
           setError('Torneo no encontrado');
         } else if (axiosError.response?.status === 403) {
           setError('No tienes permisos para ver este torneo');
         } else {
-          setError('Error al cargar los partidos. Por favor, intenta de nuevo.');
+          setError(axiosError.response?.data?.message || 'Error al cargar los partidos. Por favor, intenta de nuevo.');
         }
       } else {
         setError('Error al cargar los partidos. Por favor, intenta de nuevo.');
@@ -134,13 +141,20 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
     try {
       setLoading(true);
       setError(null);
-      const response = await api.post(`/tournaments/${tournamentId}/generate-bracket`);
+      console.log('🏗️ Generating bracket for tournament:', tournamentId);
+      
+      const response = await api.post(`/api/tournaments/${tournamentId}/generate-bracket`);
+      console.log('✅ Bracket generation response:', response.data);
+      
       if (response.data?.success || response.status === 200) {
+        console.log('🎉 Bracket generated successfully');
         await fetchMatches();
         onRefresh?.();
+      } else {
+        setError(response.data?.message || 'Error al generar el bracket');
       }
     } catch (error: unknown) {
-      console.error('Error generating bracket:', error);
+      console.error('❌ Error generating bracket:', error);
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
         if (axiosError.response?.status === 400) {
@@ -148,7 +162,7 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
         } else if (axiosError.response?.status === 403) {
           setError('No tienes permisos para generar el bracket');
         } else {
-          setError('Error al generar el bracket. Por favor, intenta de nuevo.');
+          setError(axiosError.response?.data?.message || 'Error al generar el bracket. Por favor, intenta de nuevo.');
         }
       } else {
         setError('Error al generar el bracket. Por favor, intenta de nuevo.');
@@ -176,12 +190,20 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
       
       const winnerId = score1 > score2 ? selectedMatch.participant1_id : selectedMatch.participant2_id;
       
-      const response = await api.put(`/tournaments/${tournamentId}/matches/${selectedMatch.id}/result`, {
+      console.log('🏆 Updating match result:', {
+        matchId: selectedMatch.id,
+        winnerId,
+        score: `${score1}-${score2}`
+      });
+      
+      const response = await api.put(`/api/tournaments/${tournamentId}/matches/${selectedMatch.id}/result`, {
         winner_id: winnerId,
         score: `${score1}-${score2}`,
         score_p1: score1,
         score_p2: score2,
       });
+      
+      console.log('✅ Match result updated:', response.data);
       
       if (response.data?.success || response.status === 200) {
         await fetchMatches();
@@ -190,9 +212,11 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
         setScoreP1('');
         setScoreP2('');
         onRefresh?.();
+      } else {
+        setError(response.data?.message || 'Error al actualizar el resultado');
       }
     } catch (error: unknown) {
-      console.error('Error updating match score:', error);
+      console.error('❌ Error updating match score:', error);
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
         if (axiosError.response?.status === 400) {
@@ -200,7 +224,7 @@ export default function TournamentBracket({ tournamentId, onRefresh }: Tournamen
         } else if (axiosError.response?.status === 403) {
           setError('No tienes permisos para actualizar este partido');
         } else {
-          setError('Error al actualizar el resultado. Por favor, intenta de nuevo.');
+          setError(axiosError.response?.data?.message || 'Error al actualizar el resultado. Por favor, intenta de nuevo.');
         }
       } else {
         setError('Error al actualizar el resultado. Por favor, intenta de nuevo.');
